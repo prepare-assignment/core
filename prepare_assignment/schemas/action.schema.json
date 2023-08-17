@@ -1,0 +1,146 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "title": "prepare-assignment",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[_a-zA-Z][a-zA-Z0-9_-]*$"
+    },
+    "name": {
+      "description": "Name of the action",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of what the action does",
+      "type": "string"
+    },
+    "inputs": {
+      "description": "Input parameters passed to the action",
+      "type": "object",
+      "patternProperties": {
+        "^[_a-zA-Z][a-zA-Z0-9_-]*$": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "description": "Description of the input parameter",
+              "type": "string"
+            },
+            "required": {
+              "description": "A boolean to indicate if the input parameter is required",
+              "type": "boolean",
+              "default": false
+            },
+            "default": {
+              "description": "The default value of the input parameter"
+            },
+            "type": {
+              "description": "Type of the default value",
+              "type": "string",
+              "enum": [
+                "string",
+                "number",
+                "integer",
+                "array",
+                "boolean"
+              ],
+              "default": "string"
+            },
+            "items": {
+              "description": "If the default value is an array, specify the type of the items",
+              "type": "string",
+              "enum": [
+                "string",
+                "number",
+                "integer",
+                "boolean"
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "type": {
+                    "const": "array"
+                  }
+                },
+                "required": [
+                  "type"
+                ]
+              },
+              "then": {
+                "required": [
+                  "description",
+                  "type",
+                  "items"
+                ]
+              },
+              "else": {
+                "required": [
+                  "description"
+                ],
+                "properties": {
+                  "items": {
+                    "not": {}
+                  }
+                }
+              }
+            }
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "runs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "using": {
+          "type": "string",
+          "enum": [
+            "python",
+            "composite"
+          ]
+        },
+        "main": {
+          "type": "string"
+        },
+        "steps": { "type": "array"}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "using": {
+                "const": "python"
+              }
+            },
+            "required": [
+              "using"
+            ]
+          },
+          "then": {
+            "required": [
+              "using",
+              "main"
+            ]
+          },
+          "else": {
+            "required": [
+              "using",
+              "steps"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "description",
+    "runs"
+  ]
+}
