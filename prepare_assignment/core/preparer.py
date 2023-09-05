@@ -80,12 +80,12 @@ def __action_properties(action: str) -> ActionProperties:
     return ActionProperties(organization, action_name, version)
 
 
-def __prepare_actions(actions: List[Any], parsed: Dict[str, ] = None) -> None:
+def __prepare_actions(actions: List[Any], parsed: Dict[str, Any] = None) -> None:
     if len(actions) == 0:
         logger.debug("All actions prepared")
         return
-    if seen is None:
-        seen = set()
+    if parsed is None:
+        parsed = set()
 
     action = actions.pop()
     act: str = action["uses"]
