@@ -9,7 +9,8 @@ from ruamel.yaml import YAML
 
 from prepare_assignment.core.preparer import prepare_actions
 from prepare_assignment.core.runner import run
-from prepare_assignment.core.validator import validate_actions, validate_prepare
+from prepare_assignment.core.validator import validate_prepare
+from prepare_assignment.data.validation_error import ValidationError
 from prepare_assignment.utils import set_logger_level
 
 
@@ -40,7 +41,7 @@ def __get_prepare_file(file: Optional[str]) -> str:
                                  " use the -f flag to specify which file to use")
         file = files[0]
     else:
-        file = Path(os.path.join(os.getcwd(), file))
+        file = str(Path(os.path.join(os.getcwd(), file)))
         if not os.path.isfile(file):
             raise FileNotFoundError(f"Supplied file: '{file}' is not a file")
     return file
@@ -70,11 +71,10 @@ def main() -> None:
 
     # Execute all steps
     os.chdir(os.path.dirname(path))
-    logger.debug("========== Validating config file")
-    validate_prepare(prepare)
-    logger.debug("========== Preparing actions")
-    prepare_actions(prepare['steps'])
-    logger.debug("========== Validating actions")
-    validate_actions(prepare['steps'])
-    logger.debug("========== Running prepare assignment")
-    run(prepare)
+    try:
+        validate_prepare(file, prepare)
+        prepare_actions(file, prepare['steps'])
+        run(prepare)
+    except ValidationError as ve:
+        logger.error(ve.message)
+

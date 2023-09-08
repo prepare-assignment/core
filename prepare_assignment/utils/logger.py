@@ -14,10 +14,11 @@ class ColourFormatter(logging.Formatter):
     red = "\x1b[31;20m"
     bold_red = "\x1b[31;1m"
     reset = "\x1b[0m"
-    format_log = "%(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
+    format_log_debug = "%(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
+    format_log = "%(levelname)s - %(message)s"
 
     FORMATS: Dict[int, str] = {
-        logging.DEBUG: grey + format_log + reset,
+        logging.DEBUG: grey + format_log_debug + reset,
         logging.INFO: light_blue + format_log + reset,
         logging.WARNING: yellow + format_log + reset,
         logging.ERROR: red + format_log + reset,

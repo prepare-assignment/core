@@ -69,7 +69,7 @@ class PythonActionDefinition(ActionDefinition):
 
 @dataclass
 class CompositeActionDefinition(ActionDefinition):
-    steps: Dict[str, Any]
+    steps: List[Any]
 
     @classmethod
     def of(cls, yaml: Dict[str, Any]) -> CompositeActionDefinition:
