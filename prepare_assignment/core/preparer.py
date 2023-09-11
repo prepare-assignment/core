@@ -1,15 +1,15 @@
 import json
 import logging
 import os
-import shutil
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, TypedDict
 
 from git import Repo
 from importlib_resources import files
 
-from prepare_assignment.core.validator import validate_action_definition, validate_action
-from prepare_assignment.data.action_definition import ActionDefinition, CompositeActionDefinition
+from prepare_assignment.core.validator import validate_action_definition, validate_action, load_yaml
+from prepare_assignment.data.action_definition import ActionDefinition, CompositeActionDefinition, \
+    PythonActionDefinition
 from prepare_assignment.data.action_properties import ActionProperties
 from prepare_assignment.utils.cache import get_cache_path
 
@@ -22,22 +22,26 @@ template_file = files().joinpath('../schemas/actions.schema.json_template')
 template: str = template_file.read_text()
 
 
-def __download_action(organization: str, action: str, version: str) -> Path:
+def __repo_path(props: ActionProperties) -> Path:
+    return Path(os.path.join(cache_path, props.organization, props.name, props.version, "repo"))
+
+
+def __download_action(props: ActionProperties) -> Path:
     """
     Download (using git clone) the action
     :param organization: GitHub organization/username
     :param action: action name
     :returns str: the path where the repo is checked out
     """
-    path: Path = Path(os.path.join(cache_path, organization, action, version, "repo"))
+    path: Path = __repo_path(props)
     path.mkdir(parents=True, exist_ok=True)
     # For now use ssh protocol, need to figure out how to use system defined one
-    git_url: str = f"git@github.com:{organization}/{action}.git"
+    git_url: str = f"git@github.com:{props.organization}/{props.name}.git"
     logger.debug(f"Cloning repository: {git_url}")
     repo = Repo.clone_from(git_url, path)
-    if version != "latest":
-        logger.debug(f"Checking out correct version of repository: {version}")
-        repo.git.checkout(version)
+    if props.version != "latest":
+        logger.debug(f"Checking out correct version of repository: {props.version}")
+        repo.git.checkout(props.version)
     return path
 
 
@@ -82,7 +86,21 @@ def __action_properties(action: str) -> ActionProperties:
     return ActionProperties(organization, action_name, version)
 
 
-def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def __action_dict_to_definition(action: Any, path: Path) -> ActionDefinition:
+    if action["runs"]["using"] == "composite":
+        return CompositeActionDefinition.of(action, path)
+    else:
+        return PythonActionDefinition.of(action, path)
+
+
+class ActionStuff(TypedDict):
+    schema: Any
+    action: ActionDefinition
+
+
+def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, ActionStuff]] = None) -> Dict[str, ActionStuff]:
+    # Unfortunately we cannot do this as a default value, see:
+    # https://docs.python-guide.org/writing/gotchas/#mutable-default-arguments
     if parsed is None:
         parsed = {}
     if len(actions) == 0:
@@ -99,16 +117,22 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
 
         # Check if action (therefore the path) has already been downloaded in previous run
         action_path = os.path.join(cache_path, props.organization, props.name, props.version)
+        action: Optional[ActionDefinition] = None
+        repo_path = __repo_path(props)
+        yaml_path = os.path.join(repo_path, "action.yml")
         if os.path.isdir(action_path):
             logger.debug(f"Action '{act}' is already available, loading from disk")
             with open(os.path.join(action_path, f"{props.name}.schema.json"), "r") as handle:
                 json_schema = json.load(handle)
+            action_yaml = load_yaml(yaml_path)
+            action = __action_dict_to_definition(action_yaml, repo_path)
         else:
             logger.debug(f"Action '{act}' is not available on this system")
             # Download the action (clone the repository)
-            repo_path = __download_action(props.organization, props.name, props.version)
+            __download_action(props)
             # Validate that the action.yml is valid
-            action = validate_action_definition(os.path.join(repo_path, "action.yml"))
+            action_yaml = validate_action_definition(yaml_path)
+            action = __action_dict_to_definition(action_yaml, repo_path)
             # Check if it is a composite action, in that case we might need to retrieve more actions
             if isinstance(action, CompositeActionDefinition):
                 logger.debug(f"Action '{act}' is a composite action, preparing sub-actions")
@@ -123,14 +147,14 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
             json_schema = json.loads(schema)
             with open(os.path.join(action_path, f"{props.name}.schema.json"), 'w') as handle:
                 handle.write(schema)
-            parsed[act] = json_schema
+        parsed[act] = {"schema": json_schema, "action": action}
     else:
-        json_schema = parsed[act]
+        json_schema = parsed[act]["schema"]
     validate_action(file, action_def, json_schema)
     return __prepare_actions(file, actions, parsed)
 
 
-def prepare_actions(prepare_file: str, steps: Dict[str, Any]) -> None:
+def prepare_actions(prepare_file: str, steps: Dict[str, Any]) -> Dict[str, ActionDefinition]:
     """
     Make sure that the action is available.
     If not available:
@@ -144,13 +168,15 @@ def prepare_actions(prepare_file: str, steps: Dict[str, Any]) -> None:
     logger.debug("========== Preparing actions")
     all_actions: List[Any] = []
     # DON'T FORGET TO REMOVE, ONLY FOR DEVELOPMENT
-    shutil.rmtree(cache_path, ignore_errors=True)
+    # shutil.rmtree(cache_path, ignore_errors=True)
     # Iterate through all the actions to make sure that they are available
     for step, actions in steps.items():
         for action in actions:
             # If the action is a run command, we don't need to do anything
             if action.get("uses", None) is not None:
                 all_actions.append(action)
-    __prepare_actions(prepare_file, all_actions)
+    mapping = __prepare_actions(prepare_file, all_actions)
     logger.debug("✓ All actions downloaded and valid")
+    mapping = {k: v["action"] for k, v in mapping.items()}
+    return mapping
 

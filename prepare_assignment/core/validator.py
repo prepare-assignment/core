@@ -11,12 +11,11 @@ from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 from ruamel.yaml import YAML
 
-from prepare_assignment.data.action_definition import CompositeActionDefinition, PythonActionDefinition, \
-    ActionDefinition
-from prepare_assignment.utils.default_validator import DefaultValidatingValidator
 from prepare_assignment.data.validation_error import ValidationError as VE
+from prepare_assignment.utils.default_validator import DefaultValidatingValidator
 
 logger = logging.getLogger("prepare")
+yaml = YAML(typ='safe')
 
 
 def validate_prepare(prepare_file: str, prepare: Dict[str, Any]) -> None:
@@ -62,21 +61,27 @@ def validate_action(file: str, action: Dict[str, Any], json_schema: Any) -> None
         raise VE(message)
 
 
-def validate_action_definition(path: str | os.PathLike[str] | os.PathLike) -> ActionDefinition:
-    logger.debug("Validating action definition")
+def load_yaml(path: str | os.PathLike[str] | os.PathLike) -> Any:
     path = Path(path)
+    return yaml.load(path)
+
+
+def validate_action_definition(path: str | os.PathLike[str] | os.PathLike) -> Any:
+    logger.debug("Validating action definition")
+
     # Load the validation jsonschema
     schema_path = files().joinpath('../schemas/action.schema.json')
     schema: Dict[str, Any] = json.loads(schema_path.read_text())
 
-    yaml = YAML(typ='safe')
-    action_definition = yaml.load(path)
+    action_definition = load_yaml(path)
+
     try:
         validate(action_definition, schema, cls=DefaultValidatingValidator)
+        # Overwrite the action.yml file as we might have added default values
+        with open(path, 'w') as handle:
+            yaml.dump(action_definition, handle)
     except ValidationError as ve:
         message = f"Unable to verify: {path}\n\t -> {ve.json_path}: {ve.message}"
         raise VE(message)
-    if action_definition["runs"]["using"] == "composite":
-        return CompositeActionDefinition.of(action_definition)
-    else:
-        return PythonActionDefinition.of(action_definition)
+
+    return action_definition

@@ -73,8 +73,8 @@ def main() -> None:
     os.chdir(os.path.dirname(path))
     try:
         validate_prepare(file, prepare)
-        prepare_actions(file, prepare['steps'])
-        run(prepare)
+        mapping = prepare_actions(file, prepare['steps'])
+        run(prepare, mapping)
     except ValidationError as ve:
         logger.error(ve.message)
 

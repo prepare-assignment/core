@@ -3,7 +3,8 @@ from __future__ import annotations
 import json
 from abc import ABC
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, List
+from pathlib import Path
+from typing import Any, Dict, Optional, List, TypedDict
 
 
 @dataclass
@@ -45,6 +46,7 @@ class ActionDefinition(ABC):
     name: str
     description: str
     inputs: List[PythonActionDefinitionInput]
+    path: Path
 
     @staticmethod
     def _dict_to_inputs(dictionary: Dict[str, Any]) -> List[PythonActionDefinitionInput]:
@@ -56,14 +58,15 @@ class PythonActionDefinition(ActionDefinition):
     main: str
 
     @classmethod
-    def of(cls, yaml: Dict[str, Any]) -> PythonActionDefinition:
+    def of(cls, yaml: Dict[str, Any], path: Path) -> PythonActionDefinition:
         inputs = yaml.get("inputs", {})
         return cls(
             id=yaml["id"],
             name=yaml["name"],
             description=yaml["description"],
             inputs=ActionDefinition._dict_to_inputs(inputs),
-            main=yaml["runs"]["main"]
+            main=yaml["runs"]["main"],
+            path=path
         )
 
 
@@ -72,12 +75,13 @@ class CompositeActionDefinition(ActionDefinition):
     steps: List[Any]
 
     @classmethod
-    def of(cls, yaml: Dict[str, Any]) -> CompositeActionDefinition:
+    def of(cls, yaml: Dict[str, Any], path: Path) -> CompositeActionDefinition:
         inputs = yaml.get("inputs", {})
         return cls(
             id=yaml["id"],
             name=yaml["name"],
             description=yaml["description"],
             steps=yaml["runs"]["steps"],
-            inputs=ActionDefinition._dict_to_inputs(inputs)
+            inputs=ActionDefinition._dict_to_inputs(inputs),
+            path=path
         )
