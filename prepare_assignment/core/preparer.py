@@ -16,7 +16,7 @@ from prepare_assignment.core.validator import validate_action_definition, valida
 from prepare_assignment.data.action_definition import ActionDefinition, CompositeActionDefinition, \
     PythonActionDefinition
 from prepare_assignment.data.action_properties import ActionProperties
-from prepare_assignment.data.errors import DependencyError
+from prepare_assignment.data.errors import DependencyError, ValidationError
 from prepare_assignment.utils.cache import get_cache_path
 
 # Set the cache path
@@ -69,6 +69,9 @@ def __build_json_schema(organization: str, action: ActionDefinition) -> str:
         if len(required) > 0:
             schema = schema.replace("{{required}}", ', "with"')
             output += ',\n    "required": [' + ", ".join(map(lambda x: f'"{x}"', required)) + ']\n    }'
+        else:
+            schema = schema.replace("{{required}}", "")
+            output += "\n}"
         schema = schema.replace("{{with}}", output)
     return schema
 
@@ -135,7 +138,8 @@ class ActionStuff(TypedDict):
     action: ActionDefinition
 
 
-def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, ActionStuff]] = None) -> Dict[str, ActionStuff]:
+def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, ActionStuff]] = None) -> Dict[
+    str, ActionStuff]:
     # Unfortunately we cannot do this as a default value, see:
     # https://docs.python-guide.org/writing/gotchas/#mutable-default-arguments
     if parsed is None:
@@ -180,6 +184,10 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
                     if name is not None:
                         all_actions.append(step)
                 parsed = __prepare_actions(str(repo_path), all_actions, parsed)
+            else:
+                main_path = os.path.join(repo_path, action.main)  # type: ignore
+                if not os.path.isfile(main_path):
+                    raise ValidationError(f"Main file '{action.main}' does not exist for action '{action.name}'") # type: ignore
             # Now we can build a schema for this action
             schema = __build_json_schema(props.organization, action)
             json_schema = json.loads(schema)
@@ -220,4 +228,3 @@ def prepare_actions(prepare_file: str, steps: Dict[str, Any]) -> Dict[str, Actio
     mapping = __prepare_actions(prepare_file, all_actions)
     logger.debug("✓ All actions downloaded and valid")
     return {k: v["action"] for k, v in mapping.items()}
-
