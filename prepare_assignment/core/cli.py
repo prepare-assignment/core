@@ -77,4 +77,7 @@ def main() -> None:
         run(prepare, mapping)
     except ValidationError as ve:
         logger.error(ve.message)
+    except AssertionError as ae:
+        message = str(ae)
+        logger.error(message)
 

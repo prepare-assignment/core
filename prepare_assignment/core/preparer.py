@@ -96,6 +96,25 @@ def __action_dict_to_definition(action: Any, path: Path) -> ActionDefinition:
         return PythonActionDefinition.of(action, path)
 
 
+def __action_install_dependencies(action_path: str) -> None:
+    venv_path = os.path.join(action_path, "venv", "bin", "python")
+    repo_path = os.path.join(action_path, "repo")
+    requirements_path = os.path.join(repo_path, "requirements.txt")
+    pyproject_path = os.path.join(repo_path, "pyproject.toml")
+    has_requirements = os.path.isfile(requirements_path)
+    has_pyproject = os.path.isfile(pyproject_path)
+    if has_requirements and has_pyproject:
+        raise AssertionError(f"{repo_path} contains both a requirements.txt and a pyproject.toml")
+
+    if has_requirements:
+        logger.debug(f"Installing dependencies from '{requirements_path}'")
+        os.system(f"{venv_path} -m -r pip install {requirements_path}")
+
+    if has_pyproject:
+        logger.debug(f"Installing dependencies from '{pyproject_path}'")
+        os.system(f"cd {repo_path} && {venv_path} -m pip install .")
+
+
 class ActionStuff(TypedDict):
     schema: Any
     action: ActionDefinition
@@ -151,7 +170,10 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
             json_schema = json.loads(schema)
             with open(os.path.join(action_path, f"{props.name}.schema.json"), 'w') as handle:
                 handle.write(schema)
+            # Create a virtualenv for this action
             cli_run([os.path.join(action_path, "venv")])
+            # Install dependencies
+            __action_install_dependencies(action_path)
         parsed[act] = {"schema": json_schema, "action": action}
     else:
         json_schema = parsed[act]["schema"]
