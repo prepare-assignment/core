@@ -13,7 +13,7 @@ class PythonActionDefinitionInput:
     description: str
     required: bool
     type: str
-    default: Optional[str] = None
+    default: Optional[str] | Optional[List[Any]] = None
     items: Optional[str] = None
 
     @classmethod
