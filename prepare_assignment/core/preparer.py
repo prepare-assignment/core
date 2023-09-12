@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import shutil
+from virtualenv import cli_run
 from pathlib import Path
 from typing import Dict, Any, List, Optional, TypedDict
 
@@ -150,6 +151,7 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
             json_schema = json.loads(schema)
             with open(os.path.join(action_path, f"{props.name}.schema.json"), 'w') as handle:
                 handle.write(schema)
+            cli_run([os.path.join(action_path, "venv")])
         parsed[act] = {"schema": json_schema, "action": action}
     else:
         json_schema = parsed[act]["schema"]
