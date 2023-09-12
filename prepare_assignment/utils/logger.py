@@ -48,3 +48,4 @@ def set_logger_level(logger: logging.Logger, verbosity: int = 0, add_colours: bo
         logger.setLevel(logging.DEBUG)
         handler.setLevel(logging.DEBUG)
     logger.addHandler(handler)
+    logger.propagate = False
