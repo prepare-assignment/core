@@ -2,18 +2,21 @@ import json
 import logging
 import os
 import shutil
-from virtualenv import cli_run
+import subprocess
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional, TypedDict
 
 from git import Repo
 from importlib_resources import files
+from virtualenv import cli_run
 
 from prepare_assignment.core.validator import validate_action_definition, validate_action, load_yaml, \
     validate_default_values
 from prepare_assignment.data.action_definition import ActionDefinition, CompositeActionDefinition, \
     PythonActionDefinition
 from prepare_assignment.data.action_properties import ActionProperties
+from prepare_assignment.data.errors import DependencyError
 from prepare_assignment.utils.cache import get_cache_path
 
 # Set the cache path
@@ -103,16 +106,28 @@ def __action_install_dependencies(action_path: str) -> None:
     pyproject_path = os.path.join(repo_path, "pyproject.toml")
     has_requirements = os.path.isfile(requirements_path)
     has_pyproject = os.path.isfile(pyproject_path)
-    if has_requirements and has_pyproject:
-        raise AssertionError(f"{repo_path} contains both a requirements.txt and a pyproject.toml")
 
+    if not has_requirements and not has_pyproject:
+        return
+
+    result: Optional[subprocess.CompletedProcess[Any]] = None
     if has_requirements:
         logger.debug(f"Installing dependencies from '{requirements_path}'")
-        os.system(f"{venv_path} -m -r pip install {requirements_path}")
-
-    if has_pyproject:
+        args = [venv_path] + f"-m pip install -r {requirements_path}".split(" ")
+        result = subprocess.run(args, capture_output=True)
+    elif has_pyproject:
         logger.debug(f"Installing dependencies from '{pyproject_path}'")
-        os.system(f"cd {repo_path} && {venv_path} -m pip install .")
+        args = [venv_path] + f"-m pip install .".split()
+        result = subprocess.run(args, capture_output=True, cwd=repo_path)
+
+    if result.returncode == 1:
+        log_path = os.path.join(cache_path, "logs")
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        file = os.path.join(log_path, f'{timestamp}-dependencies.log')
+        Path(log_path).mkdir(parents=True, exist_ok=True)
+        with open(file, 'wb') as handle:
+            handle.write(result.stderr)
+        raise DependencyError(f"Unable to install dependencies for '{repo_path}', see '{file}' for more info")
 
 
 class ActionStuff(TypedDict):

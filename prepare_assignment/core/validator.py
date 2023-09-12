@@ -12,7 +12,7 @@ from jsonschema.validators import validate
 from ruamel.yaml import YAML
 
 from prepare_assignment.data.action_definition import ActionDefinition
-from prepare_assignment.data.validation_error import ValidationError as VE
+from prepare_assignment.data.errors import ValidationError as VE
 from prepare_assignment.utils.default_validator import DefaultValidatingValidator
 
 logger = logging.getLogger("prepare")

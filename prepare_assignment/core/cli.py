@@ -10,7 +10,7 @@ from ruamel.yaml import YAML
 from prepare_assignment.core.preparer import prepare_actions
 from prepare_assignment.core.runner import run
 from prepare_assignment.core.validator import validate_prepare
-from prepare_assignment.data.validation_error import ValidationError
+from prepare_assignment.data.errors import ValidationError, DependencyError
 from prepare_assignment.utils import set_logger_level
 
 
@@ -77,7 +77,5 @@ def main() -> None:
         run(prepare, mapping)
     except ValidationError as ve:
         logger.error(ve.message)
-    except AssertionError as ae:
-        message = str(ae)
-        logger.error(message)
-
+    except DependencyError as de:
+        logger.error(de.message)
