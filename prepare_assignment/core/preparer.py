@@ -1,13 +1,15 @@
 import json
 import logging
 import os
+import shutil
 from pathlib import Path
 from typing import Dict, Any, List, Optional, TypedDict
 
 from git import Repo
 from importlib_resources import files
 
-from prepare_assignment.core.validator import validate_action_definition, validate_action, load_yaml
+from prepare_assignment.core.validator import validate_action_definition, validate_action, load_yaml, \
+    validate_default_values
 from prepare_assignment.data.action_definition import ActionDefinition, CompositeActionDefinition, \
     PythonActionDefinition
 from prepare_assignment.data.action_properties import ActionProperties
@@ -133,6 +135,7 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
             # Validate that the action.yml is valid
             action_yaml = validate_action_definition(yaml_path)
             action = __action_dict_to_definition(action_yaml, repo_path)
+            validate_default_values(action)
             # Check if it is a composite action, in that case we might need to retrieve more actions
             if isinstance(action, CompositeActionDefinition):
                 logger.debug(f"Action '{act}' is a composite action, preparing sub-actions")
@@ -168,7 +171,7 @@ def prepare_actions(prepare_file: str, steps: Dict[str, Any]) -> Dict[str, Actio
     logger.debug("========== Preparing actions")
     all_actions: List[Any] = []
     # DON'T FORGET TO REMOVE, ONLY FOR DEVELOPMENT
-    # shutil.rmtree(cache_path, ignore_errors=True)
+    shutil.rmtree(cache_path, ignore_errors=True)
     # Iterate through all the actions to make sure that they are available
     for step, actions in steps.items():
         for action in actions:
@@ -177,6 +180,5 @@ def prepare_actions(prepare_file: str, steps: Dict[str, Any]) -> Dict[str, Actio
                 all_actions.append(action)
     mapping = __prepare_actions(prepare_file, all_actions)
     logger.debug("✓ All actions downloaded and valid")
-    mapping = {k: v["action"] for k, v in mapping.items()}
-    return mapping
+    return {k: v["action"] for k, v in mapping.items()}
 

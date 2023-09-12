@@ -4,18 +4,27 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Type
 
 from importlib_resources import files
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 from ruamel.yaml import YAML
 
+from prepare_assignment.data.action_definition import ActionDefinition
 from prepare_assignment.data.validation_error import ValidationError as VE
 from prepare_assignment.utils.default_validator import DefaultValidatingValidator
 
 logger = logging.getLogger("prepare")
 yaml = YAML(typ='safe')
+
+type_map: Dict[str, Type] = {
+    "string": type(''),
+    "integer": type(1),
+    "number": type(1.23),
+    "array": type([]),
+    "boolean": type(True)
+}
 
 
 def validate_prepare(prepare_file: str, prepare: Dict[str, Any]) -> None:
@@ -85,3 +94,26 @@ def validate_action_definition(path: str | os.PathLike[str] | os.PathLike) -> An
         raise VE(message)
 
     return action_definition
+
+
+def validate_default_values(action: ActionDefinition) -> None:
+    for input in action.inputs:
+        if input.default is None:
+            continue
+
+        # Check that the default type is of the type we expect
+        if not isinstance(input.default, type_map[input.type]):
+            raise VE(
+                f"Unable to verify action '{action.name}', default value for input '{input.name}' is of the wrong type"
+                f", expected '{input.type}', but got '{type(input.default)}'")
+
+        # If we expect an array, validate that all elements are of the correct type
+        if input.type == "array":
+            # we need to ignore the type here as both PyCharm and mypy don't know we validated the file already and
+            # we know that there myst be option.items when the type is array
+            item_type = type_map[input.items]  # type: ignore
+            # noinspection PyTypeChecker
+            for item in input.default:
+                if item_type != type(item):
+                    raise VE(f"Default item: {item}, should be of type: {item_type}, "
+                             f"but is of type: {type(item)}")
