@@ -1,11 +1,11 @@
 [tool.poetry]
-name = "prepare-assignment"
+name = "prepare"
 version = "0.1.0"
-description = "Prepare assignment"
+description = "Prepare"
 authors = ["Bonajo <m.bonajo@fontys.nl>"]
 license = "MIT"
 readme = "README.md"
-packages = [{include = "prepare_assignment"}]
+packages = [{include = "prepare"}]
 
 [build-system]
 requires = ["poetry-core"]
@@ -17,7 +17,7 @@ ruamel-yaml = "^0.17.21"
 jsonschema = "^4.17.3"
 importlib-resources = "^5.12.0"
 gitpython = "^3.1.31"
-prepare-toolbox = "^0.1.0"
+prepare-toolbox = "^0.2.0"
 virtualenv = "^20.24.5"
 
 [tool.poetry.group.test.dependencies]

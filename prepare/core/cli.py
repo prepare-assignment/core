@@ -7,11 +7,11 @@ from typing import Optional
 from prepare_toolbox.file import get_matching_files
 from ruamel.yaml import YAML
 
-from prepare_assignment.core.preparer import prepare_actions
-from prepare_assignment.core.runner import run
-from prepare_assignment.core.validator import validate_prepare
-from prepare_assignment.data.errors import ValidationError, DependencyError
-from prepare_assignment.utils import set_logger_level
+from prepare.core.preparer import prepare_actions
+from prepare.core.runner import run
+from prepare.core.validator import validate_prepare
+from prepare.data.errors import ValidationError, DependencyError
+from prepare.utils import set_logger_level
 
 
 def add_commandline_arguments(parser: argparse.ArgumentParser) -> None:

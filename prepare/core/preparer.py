@@ -9,15 +9,15 @@ from typing import Dict, Any, List, Optional, TypedDict
 
 from git import Repo
 from importlib_resources import files
-from virtualenv import cli_run
+from virtualenv import cli_run # type: ignore
 
-from prepare_assignment.core.validator import validate_action_definition, validate_action, load_yaml, \
+from prepare.core.validator import validate_action_definition, validate_action, load_yaml, \
     validate_default_values
-from prepare_assignment.data.action_definition import ActionDefinition, CompositeActionDefinition, \
+from prepare.data.action_definition import ActionDefinition, CompositeActionDefinition, \
     PythonActionDefinition
-from prepare_assignment.data.action_properties import ActionProperties
-from prepare_assignment.data.errors import DependencyError, ValidationError
-from prepare_assignment.utils.cache import get_cache_path
+from prepare.data.action_properties import ActionProperties
+from prepare.data.errors import DependencyError, ValidationError
+from prepare.utils.cache import get_cache_path
 
 # Set the cache path
 cache_path = get_cache_path()
@@ -95,7 +95,7 @@ def __action_properties(action: str) -> ActionProperties:
     return ActionProperties(organization, action_name, version)
 
 
-def __action_dict_to_definition(action: Any, path: Path) -> ActionDefinition:
+def __action_dict_to_definition(action: Any, path: str) -> ActionDefinition:
     if action["runs"]["using"] == "composite":
         return CompositeActionDefinition.of(action, path)
     else:
@@ -123,7 +123,7 @@ def __action_install_dependencies(action_path: str) -> None:
         args = [venv_path] + f"-m pip install .".split()
         result = subprocess.run(args, capture_output=True, cwd=repo_path)
 
-    if result.returncode == 1:
+    if result is not None and result.returncode == 1:
         log_path = os.path.join(cache_path, "logs")
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         file = os.path.join(log_path, f'{timestamp}-dependencies.log')

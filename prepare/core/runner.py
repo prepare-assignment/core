@@ -8,7 +8,7 @@ from typing import Any, Dict
 
 from importlib_resources import files
 
-from prepare_assignment.data.action_definition import ActionDefinition, PythonActionDefinition
+from prepare.data.action_definition import ActionDefinition, PythonActionDefinition
 
 # Get the logger
 logger = logging.getLogger("prepare")
@@ -57,7 +57,7 @@ def __handle_action(mapping: Dict[str, ActionDefinition], action: Any, inputs: D
         if isinstance(action_definition, PythonActionDefinition):
             __execute_action(action_definition, inputs)
         else:
-            for act in action_definition.steps:
+            for act in action_definition.steps:  # type: ignore
                 __handle_action(mapping, act, inputs)
 
 
