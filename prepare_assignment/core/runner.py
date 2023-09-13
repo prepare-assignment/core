@@ -8,10 +8,10 @@ from typing import Any, Dict
 
 from importlib_resources import files
 
-from prepare.data.action_definition import ActionDefinition, PythonActionDefinition
+from prepare_assignment.data.action_definition import ActionDefinition, PythonActionDefinition
 
 # Get the logger
-logger = logging.getLogger("prepare")
+logger = logging.getLogger("prepare_assignment")
 
 
 def __execute_action(action: PythonActionDefinition, inputs: Dict[str, str]) -> None:
@@ -62,7 +62,7 @@ def __handle_action(mapping: Dict[str, ActionDefinition], action: Any, inputs: D
 
 
 def run(prepare: Dict[str, Any], mapping: Dict[str, ActionDefinition]) -> None:
-    logger.debug("========== Running prepare assignment")
+    logger.debug("========== Running prepare_assignment assignment")
     for step, actions in prepare["steps"].items():
         logger.debug(f"Running step: {step}")
         for action in actions:

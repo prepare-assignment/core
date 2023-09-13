@@ -1,11 +1,11 @@
 [tool.poetry]
-name = "prepare"
+name = "prepare assignment"
 version = "0.1.0"
-description = "Prepare"
+description = "Prepare assignment"
 authors = ["Bonajo <m.bonajo@fontys.nl>"]
 license = "MIT"
 readme = "README.md"
-packages = [{include = "prepare"}]
+packages = [{include = "prepare_assignment"}]
 
 [build-system]
 requires = ["poetry-core"]

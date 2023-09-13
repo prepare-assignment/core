@@ -11,11 +11,11 @@ from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 from ruamel.yaml import YAML
 
-from prepare.data.action_definition import ActionDefinition
-from prepare.data.errors import ValidationError as VE
-from prepare.utils.default_validator import DefaultValidatingValidator
+from prepare_assignment.data.action_definition import ActionDefinition
+from prepare_assignment.data.errors import ValidationError as VE
+from prepare_assignment.utils.default_validator import DefaultValidatingValidator
 
-logger = logging.getLogger("prepare")
+logger = logging.getLogger("prepare_assignment")
 yaml = YAML(typ='safe')
 
 type_map: Dict[str, Type] = {
@@ -29,7 +29,7 @@ type_map: Dict[str, Type] = {
 
 def validate_prepare(prepare_file: str, prepare: Dict[str, Any]) -> None:
     """
-    Validate that the prepare.y(a)ml file has the correct syntax
+    Validate that the prepare_assignment.y(a)ml file has the correct syntax
     NOTE: this does not validate all actions, this is done in the
     validate_actions function
     :param prepare: The parsed yaml
@@ -42,7 +42,7 @@ def validate_prepare(prepare_file: str, prepare: Dict[str, Any]) -> None:
     schema_path = files().joinpath('../schemas/prepare.schema.json')
     schema: Dict[str, Any] = json.loads(schema_path.read_text())
 
-    # Validate prepare.y(a)ml
+    # Validate prepare_assignment.y(a)ml
     try:
         validate(prepare, schema, cls=DefaultValidatingValidator)
     except ValidationError as ve:

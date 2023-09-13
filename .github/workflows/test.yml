@@ -123,4 +123,4 @@ jobs:
         if: steps.cached-poetry-venv.outputs.cache-hit != 'true'
         run: poetry install --no-interaction
       - name: Type checker
-        run: poetry run mypy prepare
+        run: poetry run mypy prepare_assignment

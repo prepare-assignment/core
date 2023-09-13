@@ -7,11 +7,11 @@ from typing import Optional
 from prepare_toolbox.file import get_matching_files
 from ruamel.yaml import YAML
 
-from prepare.core.preparer import prepare_actions
-from prepare.core.runner import run
-from prepare.core.validator import validate_prepare
-from prepare.data.errors import ValidationError, DependencyError
-from prepare.utils import set_logger_level
+from prepare_assignment.core.preparer import prepare_actions
+from prepare_assignment.core.runner import run
+from prepare_assignment.core.validator import validate_prepare
+from prepare_assignment.data.errors import ValidationError, DependencyError
+from prepare_assignment.utils import set_logger_level
 
 
 def add_commandline_arguments(parser: argparse.ArgumentParser) -> None:
@@ -25,19 +25,19 @@ def add_commandline_arguments(parser: argparse.ArgumentParser) -> None:
 
 def __get_prepare_file(file: Optional[str]) -> str:
     """
-    Try and find the correct prepare.y(a)ml
+    Try and find the correct prepare_assignment.y(a)ml
     :param file: file name provided by the user
     :return: path to file
     :raises FileNotFoundError: if file doesn't exist
-    :raises AssertionError: if there is both a prepare.yml and a prepare.yml and no file is provided by the user
+    :raises AssertionError: if there is both a prepare_assignment.yml and a prepare_assignment.yml and no file is provided by the user
     :raises FileNotFoundError: if the provided 'file' is not a file
     """
     if file is None:
-        files = get_matching_files("prepare.y{,a}ml")
+        files = get_matching_files("prepare_assignment.y{,a}ml")
         if len(files) == 0:
-            raise FileNotFoundError("No prepare.yml file found in working directory")
+            raise FileNotFoundError("No prepare_assignment.yml file found in working directory")
         elif len(files) > 1:
-            raise AssertionError("There is both a prepare.yml and a prepare.yml,"
+            raise AssertionError("There is both a prepare_assignment.yml and a prepare_assignment.yml,"
                                  " use the -f flag to specify which file to use")
         file = files[0]
     else:
@@ -49,7 +49,7 @@ def __get_prepare_file(file: Optional[str]) -> str:
 
 def main() -> None:
     """
-    Parse 'prepare.y(a)ml' and execute all steps
+    Parse 'prepare_assignment.y(a)ml' and execute all steps
     """
     # Handle command line arguments
     parser = argparse.ArgumentParser()
@@ -57,12 +57,12 @@ def main() -> None:
     args = parser.parse_args()
 
     # Set the logger
-    logger = logging.getLogger("prepare")
+    logger = logging.getLogger("prepare_assignment")
     set_logger_level(logger, args.verbosity)
 
-    # Get the prepare.yml file
+    # Get the prepare_assignment.yml file
     file = __get_prepare_file(args.file)
-    logger.info(f"Found prepare config file at: {file}")
+    logger.info(f"Found prepare_assignment config file at: {file}")
 
     # Load the file
     yaml = YAML(typ='safe')

@@ -11,18 +11,18 @@ from git import Repo
 from importlib_resources import files
 from virtualenv import cli_run # type: ignore
 
-from prepare.core.validator import validate_action_definition, validate_action, load_yaml, \
+from prepare_assignment.core.validator import validate_action_definition, validate_action, load_yaml, \
     validate_default_values
-from prepare.data.action_definition import ActionDefinition, CompositeActionDefinition, \
+from prepare_assignment.data.action_definition import ActionDefinition, CompositeActionDefinition, \
     PythonActionDefinition
-from prepare.data.action_properties import ActionProperties
-from prepare.data.errors import DependencyError, ValidationError
-from prepare.utils.cache import get_cache_path
+from prepare_assignment.data.action_properties import ActionProperties
+from prepare_assignment.data.errors import DependencyError, ValidationError
+from prepare_assignment.utils.cache import get_cache_path
 
 # Set the cache path
 cache_path = get_cache_path()
 # Get the logger
-logger = logging.getLogger("prepare")
+logger = logging.getLogger("prepare_assignment")
 # Load the actions template file
 template_file = files().joinpath('../schemas/actions.schema.json_template')
 template: str = template_file.read_text()
@@ -81,7 +81,7 @@ def __action_properties(action: str) -> ActionProperties:
     if len(parts) > 2:
         raise AssertionError("Actions cannot have more than one slash")
     elif len(parts) == 1:
-        parts.insert(0, "prepare-assignment")
+        parts.insert(0, "prepare_assignment-assignment")
     organization: str = parts[0]
     name = parts[1]
     split = name.split("@")
@@ -213,7 +213,7 @@ def prepare_actions(prepare_file: str, steps: Dict[str, Any]) -> Dict[str, Actio
     1. Clone the repository
     2. Checkout the correct version
     3. Generate json schema for validation
-    :param steps: The actions to prepare
+    :param steps: The actions to prepare_assignment
     :param prepare_file
     :return: None
     """
