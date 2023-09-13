@@ -1,4 +1,4 @@
-name: Release Toolbox to PyPi
+name: Release Prepare to PyPi
 
 on:
   push:
