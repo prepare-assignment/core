@@ -46,7 +46,7 @@ class ActionDefinition(ABC):
     name: str
     description: str
     inputs: List[PythonActionDefinitionInput]
-    path: Path
+    path: str
 
     @staticmethod
     def _dict_to_inputs(dictionary: Dict[str, Any]) -> List[PythonActionDefinitionInput]:
@@ -58,7 +58,7 @@ class PythonActionDefinition(ActionDefinition):
     main: str
 
     @classmethod
-    def of(cls, yaml: Dict[str, Any], path: Path) -> PythonActionDefinition:
+    def of(cls, yaml: Dict[str, Any], path: str) -> PythonActionDefinition:
         inputs = yaml.get("inputs", {})
         return cls(
             id=yaml["id"],
@@ -75,7 +75,7 @@ class CompositeActionDefinition(ActionDefinition):
     steps: List[Any]
 
     @classmethod
-    def of(cls, yaml: Dict[str, Any], path: Path) -> CompositeActionDefinition:
+    def of(cls, yaml: Dict[str, Any], path: str) -> CompositeActionDefinition:
         inputs = yaml.get("inputs", {})
         return cls(
             id=yaml["id"],

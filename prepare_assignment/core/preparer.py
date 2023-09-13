@@ -138,8 +138,8 @@ class ActionStuff(TypedDict):
     action: ActionDefinition
 
 
-def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, ActionStuff]] = None) -> Dict[
-    str, ActionStuff]:
+def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, ActionStuff]] = None) \
+        -> Dict[str, ActionStuff]:
     # Unfortunately we cannot do this as a default value, see:
     # https://docs.python-guide.org/writing/gotchas/#mutable-default-arguments
     if parsed is None:
@@ -166,14 +166,14 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
             with open(os.path.join(action_path, f"{props.name}.schema.json"), "r") as handle:
                 json_schema = json.load(handle)
             action_yaml = load_yaml(yaml_path)
-            action = __action_dict_to_definition(action_yaml, repo_path)
+            action = __action_dict_to_definition(action_yaml, action_path)
         else:
             logger.debug(f"Action '{act}' is not available on this system")
             # Download the action (clone the repository)
             __download_action(props)
             # Validate that the action.yml is valid
             action_yaml = validate_action_definition(yaml_path)
-            action = __action_dict_to_definition(action_yaml, repo_path)
+            action = __action_dict_to_definition(action_yaml, action_path)
             validate_default_values(action)
             # Check if it is a composite action, in that case we might need to retrieve more actions
             if isinstance(action, CompositeActionDefinition):
@@ -200,6 +200,8 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
         parsed[act] = {"schema": json_schema, "action": action}
     else:
         json_schema = parsed[act]["schema"]
+    if action_def.get("with", None) is None:
+        action_def["with"] = {}
     validate_action(file, action_def, json_schema)
     return __prepare_actions(file, actions, parsed)
 
@@ -218,7 +220,7 @@ def prepare_actions(prepare_file: str, steps: Dict[str, Any]) -> Dict[str, Actio
     logger.debug("========== Preparing actions")
     all_actions: List[Any] = []
     # DON'T FORGET TO REMOVE, ONLY FOR DEVELOPMENT
-    shutil.rmtree(cache_path, ignore_errors=True)
+    # shutil.rmtree(cache_path, ignore_errors=True)
     # Iterate through all the actions to make sure that they are available
     for step, actions in steps.items():
         for action in actions:
