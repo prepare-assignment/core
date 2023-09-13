@@ -64,7 +64,8 @@ def validate_action(file: str, action: Dict[str, Any], json_schema: Any) -> None
     name = action["uses"]
     logger.debug(f"Validating '{name}'")
     try:
-        validate(action, json_schema, cls=DefaultValidatingValidator)
+        # validate(action, json_schema, cls=DefaultValidatingValidator)
+        DefaultValidatingValidator(json_schema).validate(action)
     except ValidationError as ve:
         message = f"Error in: {file}, unable to verify action '{name}'\n\t -> {ve.json_path}: {ve.message}"
         raise VE(message)
