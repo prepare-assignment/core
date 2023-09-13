@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "prepare assignment"
+name = "prepare-assignment"
 version = "0.1.0"
 description = "Prepare assignment"
 authors = ["Bonajo <m.bonajo@fontys.nl>"]
