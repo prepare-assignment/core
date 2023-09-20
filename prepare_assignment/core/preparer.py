@@ -81,7 +81,7 @@ def __action_properties(action: str) -> ActionProperties:
     if len(parts) > 2:
         raise AssertionError("Actions cannot have more than one slash")
     elif len(parts) == 1:
-        parts.insert(0, "prepare_assignment-assignment")
+        parts.insert(0, "prepare-assignment")
     organization: str = parts[0]
     name = parts[1]
     split = name.split("@")

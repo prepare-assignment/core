@@ -14,10 +14,10 @@ def get_cache_path() -> Path:
         cache = os.environ.get("XDG_CACHE_HOME")
         if cache is None:
             cache = "~/.cache"
-        return Path(f"{cache}/prepare_assignment").expanduser()
+        return Path(f"{cache}/prepare").expanduser()
     elif sys.platform == "darwin":
-        return Path("~/Library/Caches/prepare_assignment").expanduser()
+        return Path("~/Library/Caches/prepare").expanduser()
     elif sys.platform == "win32":
         lad = f"{os.environ.get('LOCALAPPDATA')}"
-        return Path(os.path.join(lad, "prepare_assignment", "cache"))
+        return Path(os.path.join(lad, "prepare", "cache"))
     raise AssertionError("Unsupported OS")
