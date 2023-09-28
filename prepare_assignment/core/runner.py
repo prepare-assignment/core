@@ -12,6 +12,11 @@ from prepare_assignment.data.action_definition import ActionDefinition, PythonAc
 
 # Get the logger
 logger = logging.getLogger("prepare_assignment")
+actions_logger = logging.getLogger("actions")
+
+
+def __process_output_line(line: str) -> None:
+    actions_logger.trace(line)
 
 
 def __execute_action(action: PythonActionDefinition, inputs: Dict[str, str]) -> None:
@@ -23,13 +28,25 @@ def __execute_action(action: PythonActionDefinition, inputs: Dict[str, str]) -> 
     for key, value in inputs.items():
         sanitized = "PREPARE_" + key.replace(" ", "_").upper()
         env[sanitized] = value
-    result = subprocess.run([executable, main_path], capture_output=True, env=env)
-    if result.returncode == 1:
-        logger.error(f"Failed to execute '{action.name}', action failed with status code {result.returncode}")
-        if result.stderr:
-            logger.error(result.stderr.decode("utf-8"))
-        if not result.stderr and result.stdout:
-            logger.error(result.stdout.decode("utf-8"))
+    with Popen(
+            [executable, main_path],
+            stdout=PIPE,
+            stderr=subprocess.STDOUT,
+            bufsize=1,
+            universal_newlines=True,
+            env=env
+    ) as process:
+        for line in process.stdout:
+            __process_output_line(line)
+    if process.returncode != 0:
+        print("Error code: 1")
+    # result = subprocess.run([executable, main_path], capture_output=True, env=env)
+    # if result.returncode == 1:
+    #     logger.error(f"Failed to execute '{action.name}', action failed with status code {result.returncode}")
+    #     if result.stderr:
+    #         logger.error(result.stderr.decode("utf-8"))
+    #     if not result.stderr and result.stdout:
+    #         logger.error(result.stdout.decode("utf-8"))
 
 
 def __execute_shell_command(command: str) -> None:
