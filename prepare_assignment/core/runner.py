@@ -4,6 +4,7 @@ import os.path
 import shlex
 import subprocess
 import sys
+from subprocess import Popen, PIPE
 from typing import Any, Dict
 
 from importlib_resources import files
@@ -51,11 +52,18 @@ def __execute_action(action: PythonActionDefinition, inputs: Dict[str, str]) -> 
 
 def __execute_shell_command(command: str) -> None:
     args = shlex.split(f"bash -c {shlex.quote(command)}")
-    result = subprocess.run(args, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if result.returncode == 1:
-        print(result.stderr)
-    else:
-        print(result)
+    with Popen(
+            args,
+            stdout=PIPE,
+            stderr=subprocess.STDOUT,
+            bufsize=1,
+            universal_newlines=True
+    ) as process:
+        for line in process.stdout:
+            __process_output_line(line)
+    # result = subprocess.run(args, text=True, stdout=PIPE, stderr=PIPE)
+    # if result.returncode == 1:
+    #     print(result.stderr)
 
 
 def __handle_action(mapping: Dict[str, ActionDefinition], action: Any, inputs: Dict[str, Any]) -> None:
