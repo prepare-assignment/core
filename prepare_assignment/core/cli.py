@@ -75,7 +75,7 @@ def main() -> None:
 
     # Get the prepare_assignment.yml file
     file = __get_prepare_file(args.file)
-    logger.info(f"Found prepare_assignment config file at: {file}")
+    logger.debug(f"Found prepare_assignment config file at: {file}")
 
     # Load the file
     yaml = YAML(typ='safe')

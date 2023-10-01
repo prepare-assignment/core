@@ -54,8 +54,8 @@ def set_logger_level(logger: logging.Logger, verbosity: int = 0, add_colours: bo
         logger.setLevel(logging.DEBUG)
         handler.setLevel(logging.DEBUG)
     else:
-        logger.setLevel("TRACE")
-        handler.setLevel("TRACE")
+        logger.setLevel(logging.DEBUG - 5)
+        handler.setLevel(logging.DEBUG - 5)
     logger.addHandler(handler)
     logger.propagate = False
 
