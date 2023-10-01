@@ -5,12 +5,12 @@ import shlex
 import subprocess
 from subprocess import Popen, PIPE
 from typing import Any, Dict
-from urllib.parse import unquote_plus
 
 from prepare_toolbox.command import DEMARCATION
 
 from prepare_assignment.core.command import COMMAND_MAPPING
 from prepare_assignment.data.action_definition import ActionDefinition, PythonActionDefinition
+from prepare_assignment.data.prepare import Prepare, Action, ActionInput, UsesAction
 from prepare_assignment.data.step_environment import StepEnvironment
 
 # Get the logger
@@ -71,36 +71,35 @@ def __execute_shell_command(command: str) -> None:
             actions_logger.trace(line)
 
 
-def __handle_action(mapping: Dict[str, ActionDefinition], action: Any, inputs: Dict[str, Any], environment: StepEnvironment) -> None:
+def __handle_action(mapping: Dict[str, ActionDefinition], action: Action, inputs: Dict[str, ActionInput], environment: StepEnvironment) -> None:
     # TODO: Command substitution
     for key, value in inputs.items():
         inputs[key] = json.dumps(value)
     # Check what kind of actions it is
-    action_type = action.get("uses", None)
-    if action_type is None:
-        command = action.get("run")
-        __execute_shell_command(command)
+    if action.is_run:
+        __execute_shell_command(action.run)  # type: ignore
     else:
-        uses = action.get("uses", None)
-        action_definition = mapping.get(uses)
+        action_definition = mapping.get(action.uses)  # type: ignore
 
-        if isinstance(action_definition, PythonActionDefinition):
-            environment.current_action_definition = action_definition
-            __execute_action(inputs, environment)
-        else:
+        if action_definition.is_composite:
             for act in action_definition.steps:  # type: ignore
                 __handle_action(mapping, act, inputs, environment)
+        else:
+            environment.current_action_definition = action_definition
+            environment.current_action = action
+            environment.output[action.key] = {}
+            __execute_action(inputs, environment)
 
 
-def run(prepare: Dict[str, Any], mapping: Dict[str, ActionDefinition]) -> None:
+def run(prepare: Prepare, mapping: Dict[str, ActionDefinition]) -> None:
     logger.debug("========== Running prepare_assignment assignment")
-    for step, actions in prepare["steps"].items():
+    for step, actions in prepare.steps.items():
         logger.debug(f"Running step: {step}")
         env = os.environ.copy()
         output: Dict[str, str] = {}
         step_env = StepEnvironment(env, output)
         for action in actions:
-            inputs = action.get("with", {})
+            inputs = {} if action.is_run else action.with_  # type: ignore
             __handle_action(mapping, action, inputs, step_env)
 
     logger.debug("✓ Prepared :)")

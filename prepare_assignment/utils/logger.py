@@ -16,18 +16,22 @@ class ColourFormatter(logging.Formatter):
     bold_red = "\x1b[31;1m"
     black = "\u001b[30m"
     reset = "\033[39m"
-    format_log_debug = "%(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
-    format_log = "%(levelname)s - %(message)s"
-    format_log_trace = "%(message)s"
 
-    FORMATS: Dict[int, str] = {
-        logging.DEBUG - 5: grey + format_log_trace + reset,
-        logging.DEBUG: white + format_log_debug + reset,
-        logging.INFO: light_blue + format_log + reset,
-        logging.WARNING: yellow + format_log + reset,
-        logging.ERROR: red + format_log + reset,
-        logging.CRITICAL: bold_red + format_log + reset
-    }
+    def __init__(self, prefix: str = ""):
+        super().__init__()
+        self.prefix = prefix
+        format_log_debug = f"{self.prefix}%(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
+        format_log = f"{self.prefix}%(levelname)s - %(message)s"
+        format_log_trace = f"{self.prefix}%(message)s"
+
+        self.FORMATS: Dict[int, str] = {
+            logging.DEBUG - 5: self.grey + format_log_trace + self.reset,
+            logging.DEBUG: self.white + format_log_debug + self.reset,
+            logging.INFO: self.light_blue + format_log + self.reset,
+            logging.WARNING: self.yellow + format_log + self.reset,
+            logging.ERROR: self.red + format_log + self.reset,
+            logging.CRITICAL: self.bold_red + format_log + self.reset
+        }
 
     def format(self, record: logging.LogRecord) -> str:
         log_fmt = self.FORMATS.get(record.levelno)
@@ -35,12 +39,18 @@ class ColourFormatter(logging.Formatter):
         return formatter.format(record)
 
 
-def set_logger_level(logger: logging.Logger, verbosity: int = 0, add_colours: bool = True, new_lines: bool = True) -> None:
+def set_logger_level(
+        logger: logging.Logger,
+        verbosity: int = 0,
+        add_colours: bool = True,
+        new_lines: bool = True,
+        prefix: str = ""
+) -> None:
     handler = logging.StreamHandler()
     if not new_lines:
         handler.terminator = ""
     if add_colours:
-        handler.setFormatter(ColourFormatter())
+        handler.setFormatter(ColourFormatter(prefix))
     if verbosity == 0:
         logger.setLevel(logging.ERROR)
         handler.setLevel(logging.ERROR)

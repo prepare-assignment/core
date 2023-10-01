@@ -11,6 +11,7 @@ from prepare_assignment.core.preparer import prepare_actions
 from prepare_assignment.core.runner import run
 from prepare_assignment.core.validator import validate_prepare
 from prepare_assignment.data.errors import ValidationError, DependencyError
+from prepare_assignment.data.prepare import Prepare
 from prepare_assignment.utils import set_logger_level
 from prepare_assignment.utils.logger import add_logging_level
 
@@ -71,22 +72,23 @@ def main() -> None:
     logger = logging.getLogger("prepare_assignment")
     actions_logger = logging.getLogger("actions")
     set_logger_level(logger, args.debug)
-    set_logger_level(actions_logger, args.verbosity, new_lines=False)
+    set_logger_level(actions_logger, args.verbosity, new_lines=False, prefix="[ACT] ")
 
     # Get the prepare_assignment.yml file
     file = __get_prepare_file(args.file)
     logger.debug(f"Found prepare_assignment config file at: {file}")
 
     # Load the file
-    yaml = YAML(typ='safe')
+    loader = YAML(typ='safe')
     path = Path(file)
-    prepare = yaml.load(path)
+    yaml = loader.load(path)
 
     # Execute all steps
     os.chdir(os.path.dirname(path))
     try:
-        validate_prepare(file, prepare)
-        mapping = prepare_actions(file, prepare['steps'])
+        validate_prepare(file, yaml)
+        mapping = prepare_actions(file, yaml['steps'])
+        prepare = Prepare.of(yaml)
         run(prepare, mapping)
     except ValidationError as ve:
         logger.error(ve.message)
