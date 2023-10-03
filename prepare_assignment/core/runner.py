@@ -35,6 +35,7 @@ def __process_output_line(line: str, environment: StepEnvironment) -> None:
 
 
 def __execute_action(inputs: Dict[str, str], environment: StepEnvironment) -> None:
+    logger.debug(f"Executing actions {environment.current_action.name}")
     action = environment.current_action_definition
     venv_path = os.path.join(action.path, "venv")
     main_path = os.path.join(action.path, "repo", action.main)

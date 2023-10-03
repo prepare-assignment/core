@@ -11,10 +11,14 @@ from prepare_assignment.data.step_environment import StepEnvironment
 logger = logging.getLogger("actions")
 
 
+def __handle_message(message: str) -> str:
+    return unquote_plus(message).rstrip()
+
+
 def handle_set_failed(environment: StepEnvironment, params: List[str]) -> None:
     if len(params) < 1:
         raise AssertionError(f"Missing required message for 'set_failed'")
-    logger.error(unquote_plus(params[0]))
+    logger.error(__handle_message(params[0]))
 
 
 def handle_set_output(environment: StepEnvironment, params: List[str]) -> None:
@@ -39,25 +43,25 @@ def handle_set_output(environment: StepEnvironment, params: List[str]) -> None:
 def handle_error(environment: StepEnvironment, params: List[str]) -> None:
     if len(params) < 1:
         raise AssertionError(f"Missing required message for 'warning'")
-    logger.error(unquote_plus(params[0]))
+    logger.error(__handle_message(params[0]))
 
 
 def handle_warning(environment: StepEnvironment, params: List[str]) -> None:
     if len(params) < 1:
         raise AssertionError(f"Missing required message for 'warning'")
-    logger.warning(unquote_plus(params[0]))
+    logger.warning(__handle_message(params[0]))
 
 
 def handle_info(environment: StepEnvironment, params: List[str]) -> None:
     if len(params) < 1:
         raise AssertionError(f"Missing required message for 'info'")
-    logger.info(unquote_plus(params[0]))
+    logger.info(__handle_message(params[0]))
 
 
 def handle_debug(environment: StepEnvironment, params: List[str]) -> None:
     if len(params) < 1:
         raise AssertionError(f"Missing required message for 'debug'")
-    logger.debug(unquote_plus(params[0]))
+    logger.debug(__handle_message(params[0]))
 
 
 COMMAND_MAPPING = {

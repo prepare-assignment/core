@@ -17,10 +17,12 @@ class ColourFormatter(logging.Formatter):
     black = "\u001b[30m"
     reset = "\033[39m"
 
-    def __init__(self, prefix: str = ""):
+    def __init__(self, prefix: str = "", debug_linenumbers: bool = True):
         super().__init__()
         self.prefix = prefix
-        format_log_debug = f"{self.prefix}%(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
+        format_log_debug = f"{self.prefix}%(levelname)s - %(message)s"
+        if debug_linenumbers:
+            format_log_debug += "(%(filename)s:%(lineno)d)"
         format_log = f"{self.prefix}%(levelname)s - %(message)s"
         format_log_trace = f"{self.prefix}%(message)s"
 
@@ -43,14 +45,12 @@ def set_logger_level(
         logger: logging.Logger,
         verbosity: int = 0,
         add_colours: bool = True,
-        new_lines: bool = True,
+        debug_linenumbers: bool = True,
         prefix: str = ""
 ) -> None:
     handler = logging.StreamHandler()
-    if not new_lines:
-        handler.terminator = ""
     if add_colours:
-        handler.setFormatter(ColourFormatter(prefix))
+        handler.setFormatter(ColourFormatter(prefix, debug_linenumbers))
     if verbosity == 0:
         logger.setLevel(logging.ERROR)
         handler.setLevel(logging.ERROR)
