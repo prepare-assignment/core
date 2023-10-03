@@ -11,7 +11,9 @@ from prepare_assignment.core.preparer import prepare_actions
 from prepare_assignment.core.runner import run
 from prepare_assignment.core.validator import validate_prepare
 from prepare_assignment.data.errors import ValidationError, DependencyError
+from prepare_assignment.data.prepare import Prepare
 from prepare_assignment.utils import set_logger_level
+from prepare_assignment.utils.logger import add_logging_level
 
 
 def add_commandline_arguments(parser: argparse.ArgumentParser) -> None:
@@ -20,7 +22,16 @@ def add_commandline_arguments(parser: argparse.ArgumentParser) -> None:
     :param parser: The parser to add the arguments to
     """
     parser.add_argument("-f", "--file", action="store", help="Configuration file")
-    parser.add_argument("-v", "--verbosity", action="count", help="increase output verbosity", default=0)
+    parser.add_argument("-v",
+                        "--verbosity",
+                        action="count",
+                        help="increase action output verbosity",
+                        default=0)
+    parser.add_argument("-d",
+                        "--debug",
+                        action="count",
+                        help="increase debug verbosity for prepare assignment",
+                        default=0)
 
 
 def __get_prepare_file(file: Optional[str]) -> str:
@@ -57,23 +68,27 @@ def main() -> None:
     args = parser.parse_args()
 
     # Set the logger
+    add_logging_level("TRACE", logging.DEBUG - 5, "trace")
     logger = logging.getLogger("prepare_assignment")
-    set_logger_level(logger, args.verbosity)
+    actions_logger = logging.getLogger("actions")
+    set_logger_level(logger, args.debug)
+    set_logger_level(actions_logger, args.verbosity, prefix="[ACT] ", debug_linenumbers=False)
 
     # Get the prepare_assignment.yml file
     file = __get_prepare_file(args.file)
-    logger.info(f"Found prepare_assignment config file at: {file}")
+    logger.debug(f"Found prepare_assignment config file at: {file}")
 
     # Load the file
-    yaml = YAML(typ='safe')
+    loader = YAML(typ='safe')
     path = Path(file)
-    prepare = yaml.load(path)
+    yaml = loader.load(path)
 
     # Execute all steps
     os.chdir(os.path.dirname(path))
     try:
-        validate_prepare(file, prepare)
-        mapping = prepare_actions(file, prepare['steps'])
+        validate_prepare(file, yaml)
+        mapping = prepare_actions(file, yaml['steps'])
+        prepare = Prepare.of(yaml)
         run(prepare, mapping)
     except ValidationError as ve:
         logger.error(ve.message)

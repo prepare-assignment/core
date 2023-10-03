@@ -145,7 +145,7 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
     if parsed is None:
         parsed = {}
     if len(actions) == 0:
-        logger.debug("All actions prepared")
+        logger.debug("All (sub-)actions prepared")
         return parsed
 
     action_def = actions.pop()

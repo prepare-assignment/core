@@ -6,11 +6,12 @@
   "properties": {
     "id": {
       "type": "string",
-      "pattern": "^[_a-zA-Z][a-zA-Z0-9_-]*$"
+      "pattern": "^[a-z][a-z0-9-]*$"
     },
     "name": {
       "description": "Name of the action",
-      "type": "string"
+      "type": "string",
+      "pattern": "^[_a-zA-Z][a-zA-Z0-9_\\-\\s]*$"
     },
     "description": {
       "description": "Description of what the action does",
@@ -49,6 +50,75 @@
             },
             "items": {
               "description": "If the default value is an array, specify the type of the items",
+              "type": "string",
+              "enum": [
+                "string",
+                "number",
+                "integer",
+                "boolean"
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "type": {
+                    "const": "array"
+                  }
+                },
+                "required": [
+                  "type"
+                ]
+              },
+              "then": {
+                "required": [
+                  "description",
+                  "type",
+                  "items"
+                ]
+              },
+              "else": {
+                "required": [
+                  "description"
+                ],
+                "properties": {
+                  "items": {
+                    "not": {}
+                  }
+                }
+              }
+            }
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "outputs": {
+      "description": "Outputs from an action, that can be used in subsequent actions",
+      "type": "object",
+      "patternProperties": {
+        "^[_a-zA-Z][a-zA-Z0-9_-]*$": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "description": "Description of the output parameter",
+              "type": "string"
+            },
+            "type": {
+              "description": "Type of the output",
+              "type": "string",
+              "enum": [
+                "string",
+                "number",
+                "integer",
+                "array",
+                "boolean"
+              ],
+              "default": "string"
+            },
+            "items": {
+              "description": "If the type is an array, specify the type of the items",
               "type": "string",
               "enum": [
                 "string",

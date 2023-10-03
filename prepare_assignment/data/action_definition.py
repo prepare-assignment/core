@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import json
-from abc import ABC
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional, List, TypedDict
 
 
 @dataclass
-class PythonActionDefinitionInput:
+class ActionInputDefinition:
     name: str
     description: str
     required: bool
@@ -17,7 +17,7 @@ class PythonActionDefinitionInput:
     items: Optional[str] = None
 
     @classmethod
-    def of(cls, name: str, yaml: Dict[str, Any]) -> PythonActionDefinitionInput:
+    def of(cls, name: str, yaml: Dict[str, Any]) -> ActionInputDefinition:
         default = yaml.get("default", None)
         items = yaml.get("items", None)
         return cls(
@@ -41,16 +41,42 @@ class PythonActionDefinitionInput:
 
 
 @dataclass
+class ActionOutputDefinition:
+    description: str
+    type: str
+    items: Optional[str]
+
+    @classmethod
+    def of(cls, yaml: Dict[str, Any]) -> ActionOutputDefinition:
+        items = yaml.get("items", None)
+        return cls(
+            description=yaml["description"],
+            type=yaml["type"],
+            items=items
+        )
+
+
+@dataclass
 class ActionDefinition(ABC):
     id: str
     name: str
     description: str
-    inputs: List[PythonActionDefinitionInput]
+    inputs: List[ActionInputDefinition]
+    outputs: Dict[str, ActionOutputDefinition]
     path: str
 
+    @property
+    @abstractmethod
+    def is_composite(self) -> bool:
+        ...
+
     @staticmethod
-    def _dict_to_inputs(dictionary: Dict[str, Any]) -> List[PythonActionDefinitionInput]:
-        return [PythonActionDefinitionInput.of(key, value) for key, value in dictionary.items()]
+    def _dict_to_inputs(dictionary: Dict[str, Any]) -> List[ActionInputDefinition]:
+        return [ActionInputDefinition.of(key, value) for key, value in dictionary.items()]
+
+    @staticmethod
+    def _yaml_to_outputs(yaml: Dict[str, Any]) -> Dict[str, ActionOutputDefinition]:
+        return {key: ActionOutputDefinition.of(value) for key, value in yaml.items()}
 
 
 @dataclass
@@ -60,14 +86,20 @@ class PythonActionDefinition(ActionDefinition):
     @classmethod
     def of(cls, yaml: Dict[str, Any], path: str) -> PythonActionDefinition:
         inputs = yaml.get("inputs", {})
+        outputs = yaml.get("outputs", {})
         return cls(
             id=yaml["id"],
             name=yaml["name"],
             description=yaml["description"],
             inputs=ActionDefinition._dict_to_inputs(inputs),
+            outputs=ActionDefinition._yaml_to_outputs(outputs),
             main=yaml["runs"]["main"],
             path=path
         )
+
+    @property
+    def is_composite(self) -> bool:
+        return False
 
 
 @dataclass
@@ -77,11 +109,17 @@ class CompositeActionDefinition(ActionDefinition):
     @classmethod
     def of(cls, yaml: Dict[str, Any], path: str) -> CompositeActionDefinition:
         inputs = yaml.get("inputs", {})
+        outputs = yaml.get("outputs", {})
         return cls(
             id=yaml["id"],
             name=yaml["name"],
             description=yaml["description"],
             steps=yaml["runs"]["steps"],
             inputs=ActionDefinition._dict_to_inputs(inputs),
+            outputs=ActionDefinition._yaml_to_outputs(outputs),
             path=path
         )
+
+    @property
+    def is_composite(self) -> bool:
+        return True
