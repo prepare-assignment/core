@@ -29,7 +29,7 @@ def handle_set_output(environment: StepEnvironment, params: List[str]) -> None:
     if not isinstance(output, dict):
         raise AssertionError(f"'set_output' expects dictionary of key, value pairs")
     for key, value in output.items():
-        definition = environment.current_action_definition.outputs.get(key, None)
+        definition = environment.current_action_definition.outputs.get(key, None)  # type: ignore
         if definition is None:
             logger.warning(f"Trying to set output '{key}', but is not defined in action. Skipping for now.")
             break
@@ -37,7 +37,7 @@ def handle_set_output(environment: StepEnvironment, params: List[str]) -> None:
         if expected_type is None or not isinstance(value, expected_type):
             logger.warning(f"Output '{key}' is of type '{type(value)}', but expected '{definition.type}'")
             break
-        environment.output[environment.current_action.key][key] = value
+        environment.output[environment.current_action.key][key] = value  # type: ignore
 
 
 def handle_error(environment: StepEnvironment, params: List[str]) -> None:

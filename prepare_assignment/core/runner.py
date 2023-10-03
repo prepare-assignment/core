@@ -31,12 +31,12 @@ def __process_output_line(line: str, environment: StepEnvironment) -> None:
         params = parts[2:]
         handler(environment, params)
     else:
-        actions_logger.trace(line)
+        actions_logger.trace(line)  # type: ignore
 
 
 def __execute_action(inputs: Dict[str, str], environment: StepEnvironment) -> None:
-    logger.debug(f"Executing actions {environment.current_action.name}")
-    action = environment.current_action_definition
+    logger.debug(f"Executing actions {environment.current_action.name}")  # type: ignore
+    action: PythonActionDefinition = environment.current_action_definition   # type: ignore
     venv_path = os.path.join(action.path, "venv")
     main_path = os.path.join(action.path, "repo", action.main)
     executable = os.path.join(venv_path, "bin", "python")
@@ -53,6 +53,8 @@ def __execute_action(inputs: Dict[str, str], environment: StepEnvironment) -> No
         universal_newlines=True,
         env=env
     ) as process:
+        if process.stdout is None:
+            return
         for line in process.stdout:
             __process_output_line(line, environment)
     if process.returncode != 0:
@@ -68,25 +70,29 @@ def __execute_shell_command(command: str) -> None:
         bufsize=1,
         universal_newlines=True
     ) as process:
+        if process.stdout is None:
+            return
         for line in process.stdout:
-            actions_logger.trace(line)
+            actions_logger.trace(line)  # type: ignore
 
 
-def __handle_action(mapping: Dict[str, ActionDefinition], action: Action, inputs: Dict[str, ActionInput], environment: StepEnvironment) -> None:
+def __handle_action(mapping: Dict[str, ActionDefinition],
+                    action: Action,
+                    inputs: Dict[str, str],
+                    environment: StepEnvironment) -> None:
     # TODO: Command substitution
-    for key, value in inputs.items():
-        inputs[key] = json.dumps(value)
+
     # Check what kind of actions it is
     if action.is_run:
         __execute_shell_command(action.run)  # type: ignore
     else:
         action_definition = mapping.get(action.uses)  # type: ignore
 
-        if action_definition.is_composite:
+        if action_definition.is_composite:  # type: ignore
             for act in action_definition.steps:  # type: ignore
                 __handle_action(mapping, act, inputs, environment)
         else:
-            environment.current_action_definition = action_definition
+            environment.current_action_definition = action_definition  # type: ignore
             environment.current_action = action
             environment.output[action.key] = {}
             __execute_action(inputs, environment)
@@ -101,6 +107,8 @@ def run(prepare: Prepare, mapping: Dict[str, ActionDefinition]) -> None:
         step_env = StepEnvironment(env, output)
         for action in actions:
             inputs = {} if action.is_run else action.with_  # type: ignore
+            for key, value in inputs.items():
+                inputs[key] = json.dumps(value)
             __handle_action(mapping, action, inputs, step_env)
 
     logger.debug("✓ Prepared :)")
