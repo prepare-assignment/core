@@ -55,7 +55,7 @@ class UsesAction(Action):
     with_: Dict[str, ActionInput]
 
     @classmethod
-    def of(cls, yaml : Dict[str, Any]) -> UsesAction:
+    def of(cls, yaml: Dict[str, Any]) -> UsesAction:
         return cls(
             name=yaml["name"],
             uses=yaml["uses"],
