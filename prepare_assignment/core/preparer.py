@@ -138,6 +138,25 @@ class ActionStuff(TypedDict):
     action: ActionDefinition
 
 
+def __load_action_from_disk(action_name: str, action_path: str, props: ActionProperties, parsed: Dict[str, ActionStuff]):
+    logger.debug(f"Action '{action_name}' is already available, loading from disk")
+    repo_path = __repo_path(props)
+    yaml_path = os.path.join(repo_path, "action.yml")
+    with open(os.path.join(action_path, f"{props.name}.schema.json"), "r") as handle:
+        json_schema = json.load(handle)
+    action_yaml = load_yaml(yaml_path)
+    action = __action_dict_to_definition(action_yaml, action_path)
+    parsed[action_name] = {"schema": json_schema, "action": action}
+    if isinstance(action, CompositeActionDefinition):
+        for subaction in action.steps:
+            subaction_name = subaction.get("uses", None)
+            if subaction_name is None:
+                continue
+            subprops = __action_properties(subaction_name)
+            action_path = os.path.join(cache_path, subprops.organization, subprops.name, subprops.version)
+            __load_action_from_disk(subaction_name, action_path, subprops, parsed)
+
+
 def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, ActionStuff]] = None) \
         -> Dict[str, ActionStuff]:
     # Unfortunately we cannot do this as a default value, see:
@@ -162,11 +181,7 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
         repo_path = __repo_path(props)
         yaml_path = os.path.join(repo_path, "action.yml")
         if os.path.isdir(action_path):
-            logger.debug(f"Action '{act}' is already available, loading from disk")
-            with open(os.path.join(action_path, f"{props.name}.schema.json"), "r") as handle:
-                json_schema = json.load(handle)
-            action_yaml = load_yaml(yaml_path)
-            action = __action_dict_to_definition(action_yaml, action_path)
+            __load_action_from_disk(act, action_path, props, parsed)
         else:
             logger.debug(f"Action '{act}' is not available on this system")
             # Download the action (clone the repository)
@@ -197,12 +212,10 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
             cli_run([os.path.join(action_path, "venv")])
             # Install dependencies
             __action_install_dependencies(action_path)
-        parsed[act] = {"schema": json_schema, "action": action}
-    else:
-        json_schema = parsed[act]["schema"]
-    if action_def.get("with", None) is None:
-        action_def["with"] = {}
-    validate_action(file, action_def, json_schema)
+            parsed[act] = {"schema": json_schema, "action": action}
+            if action_def.get("with", None) is None:
+                action_def["with"] = {}
+            validate_action(file, action_def, json_schema)
     return __prepare_actions(file, actions, parsed)
 
 

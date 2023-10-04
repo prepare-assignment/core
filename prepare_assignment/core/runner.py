@@ -35,7 +35,7 @@ def __process_output_line(line: str, environment: StepEnvironment) -> None:
 
 
 def __execute_action(inputs: Dict[str, str], environment: StepEnvironment) -> None:
-    logger.debug(f"Executing actions {environment.current_action.name}")  # type: ignore
+    logger.debug(f"Executing action '{environment.current_action.name}'")  # type: ignore
     action: PythonActionDefinition = environment.current_action_definition   # type: ignore
     venv_path = os.path.join(action.path, "venv")
     main_path = os.path.join(action.path, "repo", action.main)
@@ -80,17 +80,25 @@ def __handle_action(mapping: Dict[str, ActionDefinition],
                     action: Action,
                     inputs: Dict[str, str],
                     environment: StepEnvironment) -> None:
-    # TODO: Command substitution
-
     # Check what kind of actions it is
     if action.is_run:
+        # TODO: substitute command if necessary
         __execute_shell_command(action.run)  # type: ignore
     else:
         action_definition = mapping.get(action.uses)  # type: ignore
 
         if action_definition.is_composite:  # type: ignore
+            # TODO: create new environment as it is basically a new step
+            # TODO: command substitution on inputs
+            sub_output: Dict[str, str] = {}
+            sub_env = environment.environment.copy()
+            sub_environment = StepEnvironment(sub_env, sub_output)
             for act in action_definition.steps:  # type: ignore
-                __handle_action(mapping, act, inputs, environment)
+                act = Action.of(act)
+                subinputs = {}
+                for key, value in action.with_.items():  # type: ignore
+                    subinputs[key] = json.dumps(value)
+                __handle_action(mapping, act, subinputs, sub_environment)
         else:
             environment.current_action_definition = action_definition  # type: ignore
             environment.current_action = action
