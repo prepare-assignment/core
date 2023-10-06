@@ -22,7 +22,7 @@ class ColourFormatter(logging.Formatter):
         self.prefix = prefix
         format_log_debug = f"{self.prefix}%(levelname)s - %(message)s"
         if debug_linenumbers:
-            format_log_debug += "(%(filename)s:%(lineno)d)"
+            format_log_debug += " (%(filename)s:%(lineno)d)"
         format_log = f"{self.prefix}%(levelname)s - %(message)s"
         format_log_trace = f"{self.prefix}%(message)s"
 
@@ -81,10 +81,10 @@ def add_logging_level(level_name: str, level_value: int, function_name: str) -> 
 
     def log_for_level(self, message, *args, **kwargs):
         if self.isEnabledFor(level_value):
-            self._log(level_value, message, args, **kwargs)
+            self._log(level_value, message.rstrip(), args, **kwargs)
 
     def log_to_root(message, *args, **kwargs):
-        logging.log(level_value, message, args, kwargs)
+        logging.log(level_value, message.rstrip(), args, kwargs)
 
     logging.addLevelName(level_value, level_name)
     setattr(logging, level_name, level_value)

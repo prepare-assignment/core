@@ -72,7 +72,7 @@ def main() -> None:
     logger = logging.getLogger("prepare_assignment")
     actions_logger = logging.getLogger("actions")
     set_logger_level(logger, args.debug)
-    set_logger_level(actions_logger, args.verbosity, prefix="[ACT] ", debug_linenumbers=False)
+    set_logger_level(actions_logger, args.verbosity, prefix="\t[ACT] ", debug_linenumbers=False)
 
     # Get the prepare_assignment.yml file
     file = __get_prepare_file(args.file)

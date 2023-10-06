@@ -37,7 +37,7 @@ def handle_set_output(environment: StepEnvironment, params: List[str]) -> None:
         if expected_type is None or not isinstance(value, expected_type):
             logger.warning(f"Output '{key}' is of type '{type(value)}', but expected '{definition.type}'")
             break
-        environment.output[environment.current_action.key][key] = value  # type: ignore
+        environment.outputs[environment.current_action.key][key] = value  # type: ignore
 
 
 def handle_error(environment: StepEnvironment, params: List[str]) -> None:
