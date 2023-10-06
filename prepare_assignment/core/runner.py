@@ -4,13 +4,14 @@ import os.path
 import shlex
 import subprocess
 from subprocess import Popen, PIPE
-from typing import Any, Dict
+from typing import Dict
 
 from prepare_toolbox.command import DEMARCATION
 
 from prepare_assignment.core.command import COMMAND_MAPPING
+from prepare_assignment.core.subsituter import substitute_all, __substitute
 from prepare_assignment.data.action_definition import ActionDefinition, PythonActionDefinition
-from prepare_assignment.data.prepare import Prepare, Action, ActionInput, UsesAction
+from prepare_assignment.data.prepare import Prepare, Action
 from prepare_assignment.data.step_environment import StepEnvironment
 
 # Get the logger
@@ -34,7 +35,7 @@ def __process_output_line(line: str, environment: StepEnvironment) -> None:
         actions_logger.trace(line)  # type: ignore
 
 
-def __execute_action(inputs: Dict[str, str], environment: StepEnvironment) -> None:
+def __execute_action(environment: StepEnvironment) -> None:
     logger.debug(f"Executing action '{environment.current_action.name}'")  # type: ignore
     action: PythonActionDefinition = environment.current_action_definition   # type: ignore
     venv_path = os.path.join(action.path, "venv")
@@ -42,9 +43,9 @@ def __execute_action(inputs: Dict[str, str], environment: StepEnvironment) -> No
     executable = os.path.join(venv_path, "bin", "python")
     env = environment.environment.copy()
     env["VIRTUAL_ENV"] = venv_path
-    for key, value in inputs.items():
+    for key, value in environment.current_action.with_.items():  # type: ignore
         sanitized = "PREPARE_" + key.replace(" ", "_").upper()
-        env[sanitized] = value
+        env[sanitized] = json.dumps(value)
     with Popen(
         [executable, main_path],
         stdout=PIPE,
@@ -62,6 +63,7 @@ def __execute_action(inputs: Dict[str, str], environment: StepEnvironment) -> No
 
 
 def __execute_shell_command(command: str) -> None:
+    logger.debug(f"Executing run '{command}'")  # type: ignore
     args = shlex.split(f"bash -c {shlex.quote(command)}")
     with Popen(
         args,
@@ -78,32 +80,25 @@ def __execute_shell_command(command: str) -> None:
 
 def __handle_action(mapping: Dict[str, ActionDefinition],
                     action: Action,
-                    inputs: Dict[str, str],
                     environment: StepEnvironment) -> None:
     # Check what kind of actions it is
     if action.is_run:
-        # TODO: substitute command if necessary
-        __execute_shell_command(action.run)  # type: ignore
+        command = __substitute(action.run, environment)  # type: ignore
+        __execute_shell_command(command)
     else:
         action_definition = mapping.get(action.uses)  # type: ignore
-
+        substitute_all(action.with_, environment)  # type: ignore
         if action_definition.is_composite:  # type: ignore
-            # TODO: create new environment as it is basically a new step
-            # TODO: command substitution on inputs
-            sub_output: Dict[str, str] = {}
             sub_env = environment.environment.copy()
-            sub_environment = StepEnvironment(sub_env, sub_output)
+            sub_environment = StepEnvironment(sub_env, outputs={}, inputs=action.with_)  # type: ignore
             for act in action_definition.steps:  # type: ignore
                 act = Action.of(act)
-                subinputs = {}
-                for key, value in action.with_.items():  # type: ignore
-                    subinputs[key] = json.dumps(value)
-                __handle_action(mapping, act, subinputs, sub_environment)
+                __handle_action(mapping, act, sub_environment)
         else:
             environment.current_action_definition = action_definition  # type: ignore
             environment.current_action = action
-            environment.output[action.key] = {}
-            __execute_action(inputs, environment)
+            environment.outputs[action.key] = {}
+            __execute_action(environment)
 
 
 def run(prepare: Prepare, mapping: Dict[str, ActionDefinition]) -> None:
@@ -111,12 +106,8 @@ def run(prepare: Prepare, mapping: Dict[str, ActionDefinition]) -> None:
     for step, actions in prepare.steps.items():
         logger.debug(f"Running step: {step}")
         env = os.environ.copy()
-        output: Dict[str, str] = {}
-        step_env = StepEnvironment(env, output)
+        step_env = StepEnvironment(env, {}, {})
         for action in actions:
-            inputs = {} if action.is_run else action.with_  # type: ignore
-            for key, value in inputs.items():
-                inputs[key] = json.dumps(value)
-            __handle_action(mapping, action, inputs, step_env)
+            __handle_action(mapping, action, step_env)
 
     logger.debug("✓ Prepared :)")

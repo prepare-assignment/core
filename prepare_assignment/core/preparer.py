@@ -138,7 +138,11 @@ class ActionStuff(TypedDict):
     action: ActionDefinition
 
 
-def __load_action_from_disk(action_name: str, action_path: str, props: ActionProperties, parsed: Dict[str, ActionStuff]):
+def __load_action_from_disk(action_name: str,
+                            action_path: str,
+                            props: ActionProperties,
+                            parsed: Dict[str, ActionStuff]
+                            ) -> None:
     logger.debug(f"Action '{action_name}' is already available, loading from disk")
     repo_path = __repo_path(props)
     yaml_path = os.path.join(repo_path, "action.yml")
@@ -215,7 +219,7 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
             parsed[act] = {"schema": json_schema, "action": action}
             if action_def.get("with", None) is None:
                 action_def["with"] = {}
-            validate_action(file, action_def, json_schema)
+    validate_action(file, action_def, parsed[act]["schema"])
     return __prepare_actions(file, actions, parsed)
 
 
