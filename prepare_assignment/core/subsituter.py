@@ -46,7 +46,7 @@ def __substitute(value: str, environment: StepEnvironment) -> str:
     substitutions.append({
         "start": substitutions[-1]["end"],
         "end": len(value),
-        "sub": value[substitutions[-1]["end"]:]
+        "sub": value[substitutions[-1]["end"]:]  # type: ignore
     })
     previous = 0
     result = ""
