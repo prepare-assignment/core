@@ -8,6 +8,7 @@ from prepare_assignment.data.prepare import Action
 @dataclass
 class StepEnvironment:
     environment: Dict[str, str]
-    output: Dict[str, Any]
+    outputs: Dict[str, Any]
+    inputs: Dict[str, Any]
     current_action_definition: Optional[PythonActionDefinition] = None
     current_action: Optional[Action] = None

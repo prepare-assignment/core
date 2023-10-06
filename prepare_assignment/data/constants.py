@@ -1,4 +1,5 @@
-from typing import Final, Dict, Type
+import re
+from typing import Final, Dict, Type, List
 
 TYPE_MAPPING: Final[Dict[str, Type]] = {
     "string": str,
@@ -7,3 +8,14 @@ TYPE_MAPPING: Final[Dict[str, Type]] = {
     "integer": int,
     "boolean": bool
 }
+
+HAS_SUB_REGEX: Final[re.Pattern] = re.compile(r"(?P<exp>\${{\s*(?P<content>.*?)\s*}})")
+
+SUBSTITUTIONS: Final[List[str]] = [
+    # ${{ inputs.<input> }}
+    r"inputs\.(?P<inputs>[_a-zA-Z][a-zA-Z0-9_-]*)",
+    # ${{ steps.<step>.outputs.<output> }}
+    r"steps\.(?P<outputs>(?P<step>[_a-zA-Z][a-zA-Z0-9_-]*)\.outputs\.(?P<output>[_a-zA-Z][a-zA-Z0-9_-]*))"
+]
+
+SUB_REGEX: Final[re.Pattern] = re.compile("|".join(SUBSTITUTIONS))
