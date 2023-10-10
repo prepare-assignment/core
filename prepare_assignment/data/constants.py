@@ -1,3 +1,4 @@
+import logging
 import re
 from typing import Final, Dict, Type, List
 
@@ -19,3 +20,5 @@ SUBSTITUTIONS: Final[List[str]] = [
 ]
 
 SUB_REGEX: Final[re.Pattern] = re.compile("|".join(SUBSTITUTIONS))
+
+TRACE: Final[int] = logging.DEBUG - 5

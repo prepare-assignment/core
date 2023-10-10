@@ -1,11 +1,14 @@
 import logging
 from typing import Dict
 
+from prepare_assignment.data.constants import TRACE
+
 
 class ColourFormatter(logging.Formatter):
     """
-    Custom logger that adds color based on level
-    Taken from: https://stackoverflow.com/questions/384076/how-can-i-color-python-logging-output
+    Extend the default formatter to use colours.
+
+    Adapted from: https://stackoverflow.com/questions/384076/how-can-i-color-python-logging-output
     """
 
     light_blue = "\x1b[1;34m"
@@ -18,6 +21,11 @@ class ColourFormatter(logging.Formatter):
     reset = "\033[39m"
 
     def __init__(self, prefix: str = "", debug_linenumbers: bool = True):
+        """
+        Create a new ColourLogger
+        :param prefix: optional prefix for log message
+        :param debug_linenumbers: show file + line numbers on debug message
+        """
         super().__init__()
         self.prefix = prefix
         format_log_debug = f"{self.prefix}%(levelname)s - %(message)s"
@@ -27,7 +35,7 @@ class ColourFormatter(logging.Formatter):
         format_log_trace = f"{self.prefix}%(message)s"
 
         self.FORMATS: Dict[int, str] = {
-            logging.DEBUG - 5: self.grey + format_log_trace + self.reset,
+            TRACE: self.grey + format_log_trace + self.reset,
             logging.DEBUG: self.white + format_log_debug + self.reset,
             logging.INFO: self.light_blue + format_log + self.reset,
             logging.WARNING: self.yellow + format_log + self.reset,
@@ -48,6 +56,16 @@ def set_logger_level(
         debug_linenumbers: bool = True,
         prefix: str = ""
 ) -> None:
+    """
+    Set the properties of the logger.
+
+    :param logger: the logger to use
+    :param verbosity: set the output level
+    :param add_colours: add colours to the logging
+    :param debug_linenumbers: for debug level show file + line numbers (only works when colour formatting is used)
+    :param prefix: set prefix for logger message
+    :return: None
+    """
     handler = logging.StreamHandler()
     if add_colours:
         handler.setFormatter(ColourFormatter(prefix, debug_linenumbers))
@@ -64,14 +82,22 @@ def set_logger_level(
         logger.setLevel(logging.DEBUG)
         handler.setLevel(logging.DEBUG)
     else:
-        logger.setLevel(logging.DEBUG - 5)
-        handler.setLevel(logging.DEBUG - 5)
+        logger.setLevel(TRACE)
+        handler.setLevel(TRACE)
     logger.addHandler(handler)
     logger.propagate = False
 
 
-# Adapted from: https://stackoverflow.com/a/35804945/1691778
 def add_logging_level(level_name: str, level_value: int, function_name: str) -> None:
+    """
+    Add an extra log level to the logging library.
+    Adapted from: https://stackoverflow.com/a/35804945/1691778
+
+    :param level_name: the name of the new logging level
+    :param level_value: the value of the new logging level
+    :param function_name: the name of the logging function
+    :return: None
+    """
     if hasattr(logging, level_name):
         raise AttributeError(f"Logging level '{level_name}' is already defined on logging")
     if hasattr(logging, function_name):
