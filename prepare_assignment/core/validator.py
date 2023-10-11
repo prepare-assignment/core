@@ -32,8 +32,8 @@ def validate_prepare(prepare_file: str, prepare: Dict[str, Any]) -> None:
     Validate that the prepare_assignment.y(a)ml file has the correct syntax
     NOTE: this does not validate all actions, this is done in the
     validate_actions function
-    :param prepare: The parsed yaml
-    :param prepare_file
+    :param prepare_file: path/name of the prepare file
+    :param prepare: The parsed yaml contents
     :return: None
     :raises: ValidationError: if schema is not valid
     """
@@ -116,5 +116,5 @@ def validate_default_values(action: ActionDefinition) -> None:
             # noinspection PyTypeChecker
             for item in input.default:
                 if item_type != type(item):
-                    raise VE(f"Default item: {item}, should be of type: {item_type}, "
+                    raise VE(f"Default item: {item}, for input: '{input.name}', should be of type: {item_type}, "
                              f"but is of type: {type(item)}")
