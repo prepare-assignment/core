@@ -18,6 +18,7 @@ from prepare_assignment.utils.default_validator import DefaultValidatingValidato
 logger = logging.getLogger("prepare_assignment")
 yaml = YAML(typ='safe')
 
+# Mapping from string to the correct type
 type_map: Dict[str, Type] = {
     "string": type(''),
     "integer": type(1),
@@ -56,8 +57,8 @@ def validate_action(file: str, action: Dict[str, Any], json_schema: Any) -> None
     Validate all actions based on their respective json schemas
     NOTE: this assumes that all actions are available and that it's json schema has been generated
     :param action The action definition
-    :param json_schema
-    :param file
+    :param json_schema the schema to validate agains
+    :param file the name/path of the action definition file
     :return: None
     :raises: ValidationError if an action cannot be validated against its respective schema
     """
@@ -72,11 +73,23 @@ def validate_action(file: str, action: Dict[str, Any], json_schema: Any) -> None
 
 
 def load_yaml(path: str | os.PathLike[str] | os.PathLike) -> Any:
+    """
+    Load yaml file from path
+
+    :param path: the path to the yaml file
+    :return: the loaded yaml file
+    """
     path = Path(path)
     return yaml.load(path)
 
 
 def validate_action_definition(path: str | os.PathLike[str] | os.PathLike) -> Any:
+    """
+    Validate that the action definition follows the schema
+
+    :param path: to the action definition file
+    :return: the parsed yaml file
+    """
     logger.debug("Validating action definition")
 
     # Load the validation jsonschema
@@ -98,6 +111,14 @@ def validate_action_definition(path: str | os.PathLike[str] | os.PathLike) -> An
 
 
 def validate_default_values(action: ActionDefinition) -> None:
+    """
+    Validate that the default values are of the correct type.
+    For a list this means that all default values should be of the 'item' type.
+
+    :param action: for which to verify the default values
+    :return: None
+    :raises ValidationError if any of the default values is of the wrong type
+    """
     for input in action.inputs:
         if input.default is None:
             continue
