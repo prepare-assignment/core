@@ -225,13 +225,16 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
 
 def prepare_actions(prepare_file: str, steps: Dict[str, Any]) -> Dict[str, ActionDefinition]:
     """
-    Make sure that the action is available.
-    If not available:
+    Make sure that the actions are available for the runner.
+
+    If an action is not available:
     1. Clone the repository
     2. Checkout the correct version
     3. Generate json schema for validation
-    :param steps: The actions to prepare_assignment
-    :param prepare_file
+    4. Validate action
+
+    :param prepare_file the name/path to the prepare file
+    :param steps: The actions of the prepare file
     :return: None
     """
     logger.debug("========== Preparing actions")
