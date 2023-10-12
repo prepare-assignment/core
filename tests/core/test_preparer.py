@@ -32,7 +32,7 @@ def set_cache(class_mocker) -> None:
 def __clean_cache() -> None:
     cache_path = get_cache_path()
     shutil.rmtree(cache_path, ignore_errors=True)
-    os.mkdir(cache_path)
+    Path(cache_path).mkdir(parents=True, exist_ok=True)
 
 
 def test_prepare_run_action() -> None:
