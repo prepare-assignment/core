@@ -23,13 +23,6 @@ jobs:
       checks: write
     steps:
     - uses: actions/checkout@v3
-    - name: Check known hosts
-      run: |
-        mkdir -p ~/.ssh
-        ssh-keyscan github.com >> ~/.ssh/known_hosts
-        cat ~/.ssh/known_hosts
-        ls -la ~/.ssh
-        git clone -v -- git@github.com:prepare-assignment/remove.git
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
@@ -49,6 +42,10 @@ jobs:
     - name: Install dependencies
       if: steps.cached-poetry-venv.outputs.cache-hit != 'true'
       run: poetry install --no-interaction
+    - name: Setup git
+      uses: webfactory/ssh-agent@v0.7.0
+      with:
+        ssh-private-key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
     - name: Run tests
       run: |
         source $VENV
