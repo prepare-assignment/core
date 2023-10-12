@@ -44,8 +44,6 @@ jobs:
       run: poetry install --no-interaction
     - name: Setup git
       run: |
-        git config --global user.email "prepare@ci.com"
-        git config --global user.name "Prepare CI"
         eval `ssh-agent -s`
         ssh-add <<< "${{ secrets.ACTIONS_DEPLOY_KEY }}"
     - name: Run tests
