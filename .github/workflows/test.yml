@@ -24,7 +24,10 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Check known hosts
-      run: cat ~/.ssh/known_hosts
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan github.com >> ~/.ssh/known_hosts
+        cat ~/.ssh/known_hosts
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
