@@ -3,6 +3,7 @@ import logging
 import os
 import shutil
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional, TypedDict
@@ -103,7 +104,10 @@ def __action_dict_to_definition(action: Any, path: str) -> ActionDefinition:
 
 
 def __action_install_dependencies(action_path: str) -> None:
-    venv_path = os.path.join(action_path, "venv", "bin", "python")
+    if sys.platform == "win32":
+        venv_path = os.path.join(action_path, "venv", "scripts", "python.exe")
+    else:
+        venv_path = os.path.join(action_path, "venv", "bin", "python")
     repo_path = os.path.join(action_path, "repo")
     requirements_path = os.path.join(repo_path, "requirements.txt")
     pyproject_path = os.path.join(repo_path, "pyproject.toml")
