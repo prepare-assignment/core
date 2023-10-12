@@ -3,9 +3,11 @@ import shutil
 from pathlib import Path
 from typing import Final, Dict, Any
 
+import git
 import pytest
 from pytest_mock import MockerFixture
 
+import prepare_assignment
 from prepare_assignment.core.preparer import prepare_actions
 from prepare_assignment.utils import get_cache_path
 
@@ -46,7 +48,7 @@ def test_prepare_run_action() -> None:
     assert len(mapping) == 0
 
 
-def test_prepare_composite_action() -> None:
+def test_prepare_python_action() -> None:
     prepare = {
         'prepare': [
             {'name': 'remove', 'uses': 'remove', 'with': {'input': ['out', '*.zip'], 'force': True}}
@@ -56,3 +58,46 @@ def test_prepare_composite_action() -> None:
 
     mapping = prepare_actions("prepare.yml", prepare)
     assert len(mapping) == 1
+
+
+def test_prepare_already_available(mocker: MockerFixture) -> None:
+    prepare = {
+        'prepare': [
+            {'name': 'remove', 'uses': 'remove', 'with': {'input': ['out', '*.zip'], 'force': True}}
+        ]
+    }
+    __clean_cache()
+    spy = mocker.spy(git.Repo, "clone_from")
+    prepare_actions("prepare.yml", prepare)
+    mapping = prepare_actions("prepare.yml", prepare)
+    assert len(mapping) == 1
+    spy.assert_called_once()
+
+
+def test_prepare_specific_version() -> None:
+    prepare = {
+        'prepare': [
+            {'name': 'remove', 'uses': 'remove@v1.0.0', 'with': {'input': ['out', '*.zip'], 'force': True}}
+        ]
+    }
+    __clean_cache()
+
+    mapping = prepare_actions("prepare.yml", prepare)
+    assert len(mapping) == 1
+
+
+def test_prepare_composite_action(mocker: MockerFixture) -> None:
+    prepare = {
+        'prepare': [
+            {'name': 'composite', 'uses': 'composite', 'with': {'input': 'test'}}
+        ]
+    }
+    __clean_cache()
+    spy = mocker.spy(git.Repo, "clone_from")
+    mapping = prepare_actions("prepare.yml", prepare)
+    assert len(mapping) == 2
+    assert spy.call_count == 2
+    mapping = prepare_actions("prepare.yml", prepare)
+    assert len(mapping) == 2
+    # Should load from disk, not clone again
+    assert spy.call_count == 2

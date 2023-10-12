@@ -52,10 +52,12 @@ def __download_action(props: ActionProperties) -> Path:
     return path
 
 
-def __build_json_schema(organization: str, action: ActionDefinition) -> str:
+def __build_json_schema(props: ActionProperties, action: ActionDefinition) -> str:
     logger.debug(f"Building json schema for '{action.id}'")
     schema = template.replace("{{action-id}}", action.id)
-    schema = schema.replace("{{organization}}", organization)
+    schema = schema.replace("{{action-version}}", props.version)
+    schema = schema.replace("{{organization}}", props.organization)
+    schema = schema.replace("{{action}}", str(props))
     schema = schema.replace("{{action-name}}", action.name)
     schema = schema.replace("{{action-description}}", action.description)
     required: List[str] = []
@@ -212,7 +214,7 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
                 if not os.path.isfile(main_path):
                     raise ValidationError(f"Main file '{action.main}' does not exist for action '{action.name}'") # type: ignore
             # Now we can build a schema for this action
-            schema = __build_json_schema(props.organization, action)
+            schema = __build_json_schema(props, action)
             json_schema = json.loads(schema)
             with open(os.path.join(action_path, f"{props.name}.schema.json"), 'w') as handle:
                 handle.write(schema)
