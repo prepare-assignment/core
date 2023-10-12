@@ -25,6 +25,8 @@ def set_cache(class_mocker) -> None:
         "XDG_CACHE_HOME": str(Path("/tmp")),
         "LOCALAPPDATA": str(Path(os.environ.get("Temp", "c:/temp")))
     })
+    cache_path = get_cache_path()
+    class_mocker.patch("prepare_assignment.core.preparer.cache_path", cache_path)
 
 
 def __clean_cache() -> None:
@@ -47,7 +49,7 @@ def test_prepare_run_action() -> None:
 def test_prepare_composite_action() -> None:
     prepare = {
         'prepare': [
-            {'name': 'codestripper', 'uses': 'codestripper', 'with': {'include': ['**/*.java']}}
+            {'name': 'remove', 'uses': 'remove', 'with': {'input': ['out', '*.zip'], 'force': True}}
         ]
     }
     __clean_cache()

@@ -9,7 +9,7 @@ from typing import Dict, Any, List, Optional, TypedDict
 
 from git import Repo
 from importlib_resources import files
-from virtualenv import cli_run # type: ignore
+from virtualenv import cli_run  # type: ignore
 
 from prepare_assignment.core.validator import validate_action_definition, validate_action, load_yaml, \
     validate_default_values
