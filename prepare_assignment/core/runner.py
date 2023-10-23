@@ -3,7 +3,6 @@ import logging
 import os.path
 import shlex
 import subprocess
-from subprocess import Popen, PIPE
 from typing import Dict
 
 from prepare_toolbox.command import DEMARCATION
@@ -46,9 +45,9 @@ def __execute_action(environment: StepEnvironment) -> None:
     for key, value in environment.current_action.with_.items():  # type: ignore
         sanitized = "PREPARE_" + key.replace(" ", "_").upper()
         env[sanitized] = json.dumps(value)
-    with Popen(
+    with subprocess.Popen(
         [executable, main_path],
-        stdout=PIPE,
+        stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         bufsize=1,
         universal_newlines=True,
@@ -65,9 +64,9 @@ def __execute_action(environment: StepEnvironment) -> None:
 def __execute_shell_command(command: str) -> None:
     logger.debug(f"Executing run '{command}'")  # type: ignore
     args = shlex.split(f"bash -c {shlex.quote(command)}")
-    with Popen(
+    with subprocess.Popen(
         args,
-        stdout=PIPE,
+        stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         bufsize=1,
         universal_newlines=True
