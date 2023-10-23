@@ -36,9 +36,8 @@ def __repo_path(props: ActionProperties) -> Path:
 def __download_action(props: ActionProperties) -> Path:
     """
     Download (using git clone) the action
-    :param organization: GitHub organization/username
-    :param action: action name
-    :returns str: the path where the repo is checked out
+    :param props: action properties
+    :returns Path: the path where the repo is checked out
     """
     path: Path = __repo_path(props)
     path.mkdir(parents=True, exist_ok=True)
