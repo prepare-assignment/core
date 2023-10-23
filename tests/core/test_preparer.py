@@ -1,5 +1,6 @@
 import os
 import shutil
+import tempfile
 from pathlib import Path
 from typing import Final, Dict, Any
 
@@ -8,8 +9,10 @@ import pytest
 from pytest_mock import MockerFixture
 
 import prepare_assignment
-from prepare_assignment.core.preparer import prepare_actions
+from prepare_assignment.core.preparer import prepare_actions, __action_install_dependencies
+from prepare_assignment.data.errors import DependencyError
 from prepare_assignment.utils import get_cache_path
+from virtualenv import cli_run  # type: ignore
 
 PREPARE: Final[Dict[str, Any]] = {
     'prepare': [
@@ -101,3 +104,14 @@ def test_prepare_composite_action(mocker: MockerFixture) -> None:
     assert len(mapping) == 2
     # Should load from disk, not clone again
     assert spy.call_count == 2
+
+
+def test_install_wrong_dependencies() -> None:
+    with pytest.raises(DependencyError) as pytest_wrapped_e:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cli_run([os.path.join(tmpdir, "venv")])
+            repo_path = os.path.join(tmpdir, "repo")
+            os.mkdir(repo_path)
+            with open(os.path.join(repo_path, "requirements.txt"), "w") as handle:
+                handle.write("prepare_toolbox==0.0.0")
+            __action_install_dependencies(tmpdir)
