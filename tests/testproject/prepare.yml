@@ -1,0 +1,22 @@
+name: Test project
+steps:
+  prepare:
+    - name: remove out
+      uses: remove
+      with:
+        input:
+          - "out"
+          - "out.txt"
+        force: true
+        recursive: true
+    - name: codestripper
+      id: codestripper
+      uses: codestripper
+      with:
+        include:
+          - "**/*.java"
+          - "pom.xml"
+        working-directory: "solution"
+        verbosity: 5
+    - name: Test a run command with substitution
+      run: echo '${{ steps.codestripper.outputs.stripped-files }}' | jq > out.txt
