@@ -19,6 +19,6 @@ def test_main(monkeypatch: pytest.MonkeyPatch, caplog: LogCaptureFixture):
     with patch.object(sys, 'argv', args):
             main()
     assert os.path.isdir("out")
-    with open('out.txt', 'rbU') as handle:
+    with open('out.txt', 'rb') as handle:
         count = sum(1 for _ in handle)
     assert count == 7
