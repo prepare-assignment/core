@@ -160,3 +160,4 @@ cython_debug/
 .idea/
 exampleproject/
 tests.xml
+out.txt
