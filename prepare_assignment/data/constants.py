@@ -21,4 +21,4 @@ SUBSTITUTIONS: Final[List[str]] = [
 
 SUB_REGEX: Final[re.Pattern] = re.compile("|".join(SUBSTITUTIONS))
 
-TRACE: Final[int] = logging.DEBUG - 5
+LOG_LEVEL_TRACE: Final[int] = logging.DEBUG - 5
