@@ -3,7 +3,7 @@ import logging
 import pytest
 from pytest_mock import MockerFixture
 
-from prepare_assignment.data.constants import TRACE
+from prepare_assignment.data.constants import LOG_LEVEL_TRACE
 from prepare_assignment.utils import set_logger_level
 from prepare_assignment.utils.logger import ColourFormatter, add_logging_level
 
@@ -33,9 +33,9 @@ def test_no_colour(mocker: MockerFixture) -> None:
         (1, logging.WARNING),
         (2, logging.INFO),
         (3, logging.DEBUG),
-        (4, TRACE),
-        (10, TRACE),
-        (-1, TRACE),
+        (4, LOG_LEVEL_TRACE),
+        (10, LOG_LEVEL_TRACE),
+        (-1, LOG_LEVEL_TRACE),
     ]
 )
 def test_levels(verbosity: int, level: int) -> None:

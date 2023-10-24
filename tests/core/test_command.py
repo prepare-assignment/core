@@ -27,7 +27,6 @@ env = StepEnvironment(environment={},
                       current_action=action)
 
 
-
 @pytest.mark.parametrize(
     "function, level", [
         (handle_set_failed, logging.ERROR),
