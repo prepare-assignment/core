@@ -1,3 +1,5 @@
+import tempfile
+
 import pytest
 from pytest_mock import MockerFixture
 
@@ -18,9 +20,43 @@ mapping = {
 }
 
 
+class MockedPopen:
+
+    def __init__(self, args, **kwargs):
+        self.args = args
+        self.returncode = 0
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, value, traceback):
+        pass
+
+    @property
+    def stdout(self):
+        return [":PA:error:PA:error message\n"]
+
+
+class MockedPopenFail(MockedPopen):
+    def __init__(self, args, **kwargs):
+        super().__init__(args, **kwargs)
+        self.returncode = 1
+
+
 def test_runner(mocker: MockerFixture) -> None:
+    mocker.patch("prepare_assignment.core.runner.actions_logger")
     mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
-    # TODO: set the values on the mock
+    mock.side_effect = MockedPopen
+    prepare = Prepare.of(yaml)
+    run(prepare, mapping)
+    assert mock.call_count == 3
+
+
+def test_runner_fail(mocker: MockerFixture) -> None:
+    #TODO: update test when we are handling failed command execution
+    mocker.patch("prepare_assignment.core.runner.actions_logger")
+    mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
+    mock.side_effect = MockedPopenFail
     prepare = Prepare.of(yaml)
     run(prepare, mapping)
     assert mock.call_count == 3
