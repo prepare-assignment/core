@@ -1,7 +1,7 @@
 import logging
 from typing import Dict
 
-from prepare_assignment.data.constants import TRACE
+from prepare_assignment.data.constants import LOG_LEVEL_TRACE
 
 
 class ColourFormatter(logging.Formatter):
@@ -35,7 +35,7 @@ class ColourFormatter(logging.Formatter):
         format_log_trace = f"{self.prefix}%(message)s"
 
         self.FORMATS: Dict[int, str] = {
-            TRACE: self.grey + format_log_trace + self.reset,
+            LOG_LEVEL_TRACE: self.grey + format_log_trace + self.reset,
             logging.DEBUG: self.white + format_log_debug + self.reset,
             logging.INFO: self.light_blue + format_log + self.reset,
             logging.WARNING: self.yellow + format_log + self.reset,
@@ -82,10 +82,10 @@ def set_logger_level(
         logger.setLevel(logging.DEBUG)
         handler.setLevel(logging.DEBUG)
     else:
-        logger.setLevel(TRACE)
-        handler.setLevel(TRACE)
+        logger.setLevel(LOG_LEVEL_TRACE)
+        handler.setLevel(LOG_LEVEL_TRACE)
     logger.addHandler(handler)
-    logger.propagate = False
+    logger.propagate = True
 
 
 def add_logging_level(level_name: str, level_value: int, function_name: str) -> None:
