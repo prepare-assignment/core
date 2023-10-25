@@ -2,6 +2,8 @@ import logging
 import re
 from typing import Final, Dict, Type, List
 
+from prepare_assignment.data.config import Config
+
 TYPE_MAPPING: Final[Dict[str, Type]] = {
     "string": str,
     "array": list,
@@ -22,3 +24,5 @@ SUBSTITUTIONS: Final[List[str]] = [
 SUB_REGEX: Final[re.Pattern] = re.compile("|".join(SUBSTITUTIONS))
 
 LOG_LEVEL_TRACE: Final[int] = logging.DEBUG - 5
+
+CONFIG: Config = Config()
