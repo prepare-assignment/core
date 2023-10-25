@@ -75,9 +75,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     add_commandline_arguments(parser)
     args = parser.parse_args()
-    CONFIG.DEBUG = args.debug
-    CONFIG.GIT_MODE = args.git
-    CONFIG.VERBOSITY = args.verbosity
+    CONFIG.DEBUG = args.debug  # type: ignore
+    CONFIG.GIT_MODE = args.git  # type: ignore
+    CONFIG.VERBOSITY = args.verbosity  # type: ignore
 
     # Set the logger
     add_logging_level("TRACE", logging.DEBUG - 5, "trace")

@@ -42,10 +42,11 @@ def __download_action(props: ActionProperties) -> Path:
     """
     path: Path = __repo_path(props)
     path.mkdir(parents=True, exist_ok=True)
+    git_url: str
     if CONFIG.GIT_MODE == "https":
-        git_url: str = f"git@github.com:{props.organization}/{props.name}.git"
+        git_url = f"https://github.com/{props.organization}/{props.name}.git"
     else:
-        git_url: str = f"https://github.com/{props.organization}/{props.name}.git"
+        git_url = f"git@github.com:{props.organization}/{props.name}.git"
     logger.debug(f"Cloning repository: {git_url}")
     with Repo.clone_from(git_url, path) as repo:
         if props.version != "latest":

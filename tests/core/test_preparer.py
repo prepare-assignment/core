@@ -1,5 +1,6 @@
 import os
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 from typing import Final, Dict, Any
@@ -29,19 +30,26 @@ def set_cache(class_mocker) -> None:
         "XDG_CACHE_HOME": str(Path("/tmp")),
         "LOCALAPPDATA": str(Path(os.environ.get("Temp", "c:/temp")))
     })
+    git_mode = os.environ.get("PREPARE_TEST_GIT_MODE", "ssh")
+    class_mocker.patch("prepare_assignment.core.preparer.CONFIG.GIT_MODE", git_mode)
     cache_path = get_cache_path()
     class_mocker.patch("prepare_assignment.core.preparer.cache_path", cache_path)
 
 
 def __clean_cache() -> None:
     cache_path = get_cache_path()
+
     # We need to fix the readonly git directory on windows
     def onerror(func, path, exec_info):
         import stat
         if not os.access(path, os.W_OK):
             os.chmod(path, stat.S_IWUSR)
             func(path)
-    shutil.rmtree(cache_path, onerror=onerror)
+
+    if sys.platform == "win32":
+        shutil.rmtree(cache_path, onerror=onerror)
+    else:
+        shutil.rmtree(cache_path, ignore_errors=True)
     Path(cache_path).mkdir(parents=True, exist_ok=True)
 
 
@@ -57,7 +65,6 @@ def test_prepare_run_action() -> None:
 
 
 def test_prepare_python_action(mocker: MockerFixture) -> None:
-    mocker.patch("prepare_assignment.core.preparer.CONFIG.GIT_MODE", return_value="ssh")
     prepare = {
         'prepare': [
             {'name': 'remove', 'uses': 'remove', 'with': {'input': ['out', '*.zip'], 'force': True}}
