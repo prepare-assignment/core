@@ -48,6 +48,7 @@ jobs:
         ssh-private-key: |
           ${{ secrets.ACTIONS_DEPLOY_KEY }}
           ${{ SECRETS.ACTIONS_COMPOSITE_KEY }}
+          ${{ SECRETS.ACTIONS_CODESTRIPPER_KEY }}
     - name: Run tests
       run: |
         source $VENV
