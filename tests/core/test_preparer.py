@@ -8,7 +8,6 @@ import git
 import pytest
 from pytest_mock import MockerFixture
 
-import prepare_assignment
 from prepare_assignment.core.preparer import prepare_actions, __action_install_dependencies
 from prepare_assignment.data.errors import DependencyError
 from prepare_assignment.utils import get_cache_path
@@ -36,7 +35,13 @@ def set_cache(class_mocker) -> None:
 
 def __clean_cache() -> None:
     cache_path = get_cache_path()
-    shutil.rmtree(cache_path, ignore_errors=True)
+    # We need to fix the readonly git directory on windows
+    def onerror(func, path, exec_info):
+        import stat
+        if not os.access(path, os.W_OK):
+            os.chmod(path, stat.S_IWUSR)
+            func(path)
+    shutil.rmtree(cache_path, onerror=onerror)
     Path(cache_path).mkdir(parents=True, exist_ok=True)
 
 
@@ -51,7 +56,8 @@ def test_prepare_run_action() -> None:
     assert len(mapping) == 0
 
 
-def test_prepare_python_action() -> None:
+def test_prepare_python_action(mocker: MockerFixture) -> None:
+    mocker.patch("prepare_assignment.core.preparer.CONFIG.GIT_MODE", return_value="ssh")
     prepare = {
         'prepare': [
             {'name': 'remove', 'uses': 'remove', 'with': {'input': ['out', '*.zip'], 'force': True}}

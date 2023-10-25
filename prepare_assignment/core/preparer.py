@@ -17,6 +17,7 @@ from prepare_assignment.core.validator import validate_action_definition, valida
 from prepare_assignment.data.action_definition import ActionDefinition, CompositeActionDefinition, \
     PythonActionDefinition
 from prepare_assignment.data.action_properties import ActionProperties
+from prepare_assignment.data.constants import CONFIG
 from prepare_assignment.data.errors import DependencyError, ValidationError
 from prepare_assignment.utils.cache import get_cache_path
 
@@ -41,13 +42,15 @@ def __download_action(props: ActionProperties) -> Path:
     """
     path: Path = __repo_path(props)
     path.mkdir(parents=True, exist_ok=True)
-    # For now use ssh protocol, need to figure out how to use system defined one
-    git_url: str = f"git@github.com:{props.organization}/{props.name}.git"
+    if CONFIG.GIT_MODE == "https":
+        git_url: str = f"git@github.com:{props.organization}/{props.name}.git"
+    else:
+        git_url: str = f"https://github.com/{props.organization}/{props.name}.git"
     logger.debug(f"Cloning repository: {git_url}")
-    repo = Repo.clone_from(git_url, path)
-    if props.version != "latest":
-        logger.debug(f"Checking out correct version of repository: {props.version}")
-        repo.git.checkout(props.version)
+    with Repo.clone_from(git_url, path) as repo:
+        if props.version != "latest":
+            logger.debug(f"Checking out correct version of repository: {props.version}")
+            repo.git.checkout(props.version)
     return path
 
 
