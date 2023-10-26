@@ -3,6 +3,7 @@ import logging
 import os.path
 import shlex
 import subprocess
+import sys
 from typing import Dict
 
 from prepare_toolbox.command import DEMARCATION
@@ -39,7 +40,12 @@ def __execute_action(environment: StepEnvironment) -> None:
     action: PythonActionDefinition = environment.current_action_definition   # type: ignore
     venv_path = os.path.join(action.path, "venv")
     main_path = os.path.join(action.path, "repo", action.main)
-    executable = os.path.join(venv_path, "bin", "python")
+    executable: str
+    if sys.platform == "win32":
+        executable = os.path.join(venv_path, "Scripts", "python.exe")
+    else:
+        executable = os.path.join(venv_path, "bin", "python")
+    
     env = environment.environment.copy()
     env["VIRTUAL_ENV"] = venv_path
     for key, value in environment.current_action.with_.items():  # type: ignore
@@ -63,6 +69,7 @@ def __execute_action(environment: StepEnvironment) -> None:
 
 def __execute_shell_command(command: str) -> None:
     logger.debug(f"Executing run '{command}'")  # type: ignore
+    print(f"bash -c {shlex.quote(command)}")
     args = shlex.split(f"bash -c {shlex.quote(command)}")
     with subprocess.Popen(
         args,
