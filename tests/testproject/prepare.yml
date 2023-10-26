@@ -19,4 +19,5 @@ steps:
         working-directory: "solution"
         verbosity: 5
     - name: Test a run command with substitution
-      run: echo '${{ steps.codestripper.outputs.stripped-files }}' | jq > out.txt
+      #run: echo '${{ steps.codestripper.outputs.stripped-files }}' | jq > out.txt
+      run: echo '${{ steps.codestripper.outputs.stripped-files }}' > out.txt

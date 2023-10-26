@@ -39,6 +39,9 @@ def set_cache(class_mocker) -> None:
 def __clean_cache() -> None:
     cache_path = get_cache_path()
 
+    if not os.path.exists(cache_path):
+        return
+
     # We need to fix the readonly git directory on windows
     def onerror(func, path, exec_info):
         import stat
@@ -50,6 +53,7 @@ def __clean_cache() -> None:
         shutil.rmtree(cache_path, onerror=onerror)
     else:
         shutil.rmtree(cache_path, ignore_errors=True)
+
     Path(cache_path).mkdir(parents=True, exist_ok=True)
 
 
