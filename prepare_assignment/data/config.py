@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Final, Literal, Union
+from typing import Final, Literal
 
 
 @dataclass

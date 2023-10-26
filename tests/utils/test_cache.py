@@ -1,5 +1,4 @@
 import os
-import sys
 from pathlib import Path
 
 import pytest
@@ -45,5 +44,5 @@ def test_cache_win32(mocker: MockerFixture) -> None:
 def test_cache_unsupported(mocker: MockerFixture) -> None:
     mock = mocker.patch("prepare_assignment.utils.cache.sys")
     mock.platform = "unsupported"
-    with pytest.raises(AssertionError) as pytest_wrapped_e:
+    with pytest.raises(AssertionError):
         get_cache_path()

@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import shutil
 import subprocess
 import sys
 from datetime import datetime
@@ -36,7 +35,8 @@ def __repo_path(props: ActionProperties) -> Path:
 
 def __download_action(props: ActionProperties) -> Path:
     """
-    Download (using git clone) the action
+    Download the action (using git clone)
+
     :param props: action properties
     :returns Path: the path where the repo is checked out
     """
@@ -70,7 +70,8 @@ def __build_json_schema(props: ActionProperties, action: ActionDefinition) -> st
         if inp.required:
             required.append(inp.name)
     if len(properties) > 0:
-        output = ',    \n"with": {\n      "type": "object",\n      "additionalProperties": false,\n      "properties": {\n'
+        output = (',    \n"with": {\n      "type": "object",\n      "additionalProperties": false,\n '
+                  '     "properties": {\n')
         output += ",\n".join(properties) + "\n    }"
         if len(required) > 0:
             schema = schema.replace("{{required}}", ', "with"')
@@ -182,7 +183,6 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
 
     action_def = actions.pop()
     act: str = action_def["uses"]
-    json_schema: Optional[Any] = None
     # Check if we have already loaded the action
     if parsed.get(act, None) is None:
         logger.debug(f"Action '{act}' has not been loaded in this run")
@@ -190,7 +190,6 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
 
         # Check if action (therefore the path) has already been downloaded in previous run
         action_path = os.path.join(cache_path, props.organization, props.name, props.version)
-        action: Optional[ActionDefinition] = None
         repo_path = __repo_path(props)
         yaml_path = os.path.join(repo_path, "action.yml")
         if os.path.isdir(action_path):
@@ -201,7 +200,7 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
             __download_action(props)
             # Validate that the action.yml is valid
             action_yaml = validate_action_definition(yaml_path)
-            action = __action_dict_to_definition(action_yaml, action_path)
+            action: ActionDefinition = __action_dict_to_definition(action_yaml, action_path)
             validate_default_values(action)
             # Check if it is a composite action, in that case we might need to retrieve more actions
             if isinstance(action, CompositeActionDefinition):
@@ -215,7 +214,8 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
             else:
                 main_path = os.path.join(repo_path, action.main)  # type: ignore
                 if not os.path.isfile(main_path):
-                    raise ValidationError(f"Main file '{action.main}' does not exist for action '{action.name}'") # type: ignore
+                    error_msg = f"Main file '{action.main}' does not exist for action '{action.name}'"  # type: ignore
+                    raise ValidationError(error_msg)
             # Now we can build a schema for this action
             schema = __build_json_schema(props, action)
             json_schema = json.loads(schema)
@@ -225,7 +225,8 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
             cli_run([os.path.join(action_path, "venv")])
             # Install dependencies
             __action_install_dependencies(action_path)
-            parsed[act] = {"schema": json_schema, "action": action}
+            combined: ActionStuff = {"schema": json_schema, "action": action}
+            parsed[act] = combined
             if action_def.get("with", None) is None:
                 action_def["with"] = {}
     validate_action(file, action_def, parsed[act]["schema"])

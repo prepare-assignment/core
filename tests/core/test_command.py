@@ -4,12 +4,11 @@ from typing import Callable, List
 
 import pytest
 
-from prepare_assignment.core.command import handle_set_failed, handle_debug, handle_info, handle_warning, handle_error, \
-    handle_set_output
+from prepare_assignment.core.command import handle_set_failed, handle_debug, handle_info, handle_warning, \
+    handle_error, handle_set_output
 from prepare_assignment.data.action_definition import PythonActionDefinition, ActionOutputDefinition
-from prepare_assignment.data.prepare import Action, UsesAction
+from prepare_assignment.data.prepare import UsesAction
 from prepare_assignment.data.step_environment import StepEnvironment
-
 
 output = ActionOutputDefinition(description="test", items=None, type="string")
 action_definition = PythonActionDefinition(outputs={'test': output},
@@ -58,7 +57,7 @@ def test_handle_functions(function: Callable[[StepEnvironment, List[str]], None]
     ]
 )
 def test_handle_functions_fail(function: Callable[[StepEnvironment, List[str]], None]) -> None:
-    with pytest.raises(AssertionError) as pytest_wrapped_e:
+    with pytest.raises(AssertionError):
         function(env, [])
 
 

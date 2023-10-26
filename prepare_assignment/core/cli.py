@@ -10,7 +10,6 @@ from ruamel.yaml import YAML
 from prepare_assignment.core.preparer import prepare_actions
 from prepare_assignment.core.runner import run
 from prepare_assignment.core.validator import validate_prepare
-from prepare_assignment.data.config import Config
 from prepare_assignment.data.constants import CONFIG
 from prepare_assignment.data.errors import ValidationError, DependencyError
 from prepare_assignment.data.prepare import Prepare
@@ -49,7 +48,8 @@ def __get_prepare_file(file: Optional[str]) -> str:
     :param file: file name provided by the user
     :return: path to file
     :raises FileNotFoundError: if file doesn't exist
-    :raises AssertionError: if there is both a prepare_assignment.yml and a prepare_assignment.yml and no file is provided by the user
+    :raises AssertionError: if there is both a prepare_assignment.yml and a prepare_assignment.yml
+                            and no file is provided by the user
     :raises FileNotFoundError: if the provided 'file' is not a file
     """
     if file is None:

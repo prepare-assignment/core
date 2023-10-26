@@ -1,7 +1,5 @@
-import ast
 import json
 import logging
-import re
 from json import JSONDecodeError
 from typing import List
 from urllib.parse import unquote_plus
@@ -25,10 +23,9 @@ def handle_set_failed(environment: StepEnvironment, params: List[str]) -> None:
 def handle_set_output(environment: StepEnvironment, params: List[str]) -> None:
     if len(params) < 2:
         raise AssertionError(f"Missing required params for 'set_failed'")
-    message = params[0]
     try:
         output = json.loads(params[1])
-    except JSONDecodeError as e:
+    except JSONDecodeError:
         raise AssertionError(f"'set_output' expects valid JSON params")
     if not isinstance(output, dict):
         raise AssertionError(f"'set_output' expects dictionary of key, value pairs")

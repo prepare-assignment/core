@@ -1,12 +1,12 @@
+import copy
 from typing import Any, Dict, Final
 
 import pytest
-import copy
 from pytest_mock import MockerFixture
 
-from prepare_assignment.core.validator import validate_prepare, validate_action, load_yaml, validate_action_definition, \
-    validate_default_values
-from prepare_assignment.data.action_definition import ActionDefinition, PythonActionDefinition
+from prepare_assignment.core.validator import (validate_prepare, validate_action, load_yaml,
+                                               validate_action_definition, validate_default_values)
+from prepare_assignment.data.action_definition import PythonActionDefinition
 from prepare_assignment.data.errors import ValidationError
 
 VALID_PREPARE_YAML: Final[Dict[str, Any]] = {

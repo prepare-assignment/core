@@ -1,14 +1,13 @@
 import logging
 
 import pytest
-from pytest_mock import MockerFixture
 
 from prepare_assignment.data.constants import LOG_LEVEL_TRACE
 from prepare_assignment.utils import set_logger_level
 from prepare_assignment.utils.logger import ColourFormatter, add_logging_level
 
 
-def test_set_colour(mocker: MockerFixture) -> None:
+def test_set_colour() -> None:
     logger = logging.getLogger("test_set_colour")
     set_logger_level(logger, verbosity=0, add_colours=True, prefix="TEST", debug_linenumbers=True)
     assert logger.hasHandlers()
@@ -17,7 +16,7 @@ def test_set_colour(mocker: MockerFixture) -> None:
     assert isinstance(formatter, ColourFormatter)
 
 
-def test_no_colour(mocker: MockerFixture) -> None:
+def test_no_colour() -> None:
     logger = logging.getLogger("test_set_colour")
     set_logger_level(logger, verbosity=0, add_colours=False, prefix="TEST", debug_linenumbers=True)
     assert logger.hasHandlers()
@@ -52,10 +51,10 @@ def test_add_logging_level(caplog: pytest.LogCaptureFixture) -> None:
     assert logging.getLevelName("test") == 1
     assert logging.getLevelName(1) == "test"
 
-    with pytest.raises(AttributeError) as pytest_wrapped_e:
+    with pytest.raises(AttributeError):
         add_logging_level("test", 2, "other_fun")
 
-    with pytest.raises(AttributeError) as pytest_wrapped_e:
+    with pytest.raises(AttributeError):
         add_logging_level("asd", 2, "test_fun")
 
     logger = logging.getLogger("test_add_logging_level")

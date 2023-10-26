@@ -1,6 +1,3 @@
-import tempfile
-
-import pytest
 from pytest_mock import MockerFixture
 
 from prepare_assignment.core.runner import run
@@ -53,7 +50,7 @@ def test_runner(mocker: MockerFixture) -> None:
 
 
 def test_runner_fail(mocker: MockerFixture) -> None:
-    #TODO: update test when we are handling failed command execution
+    # TODO: update test when we are handling failed command execution
     mocker.patch("prepare_assignment.core.runner.actions_logger")
     mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
     mock.side_effect = MockedPopenFail

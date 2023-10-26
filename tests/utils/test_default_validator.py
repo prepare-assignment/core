@@ -34,5 +34,5 @@ def test_default_error() -> None:
     yaml = {
         'non-default': 1
     }
-    with pytest.raises(ValidationError) as pytest_wrapped_e:
+    with pytest.raises(ValidationError):
         DefaultValidatingValidator(json_schema).validate(yaml)

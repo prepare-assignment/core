@@ -27,7 +27,8 @@ def __process_output_line(line: str, environment: StepEnvironment) -> None:
         command = parts[1]
         handler = COMMAND_MAPPING.get(command, None)
         if not handler:
-            logger.warning(f"Found command '{command}', but this version of prepare assignment has no handler registered")
+            logger.warning(f"Found command '{command}', "
+                           f"but this version of prepare assignment has no handler registered")
             return
         params = parts[2:]
         handler(environment, params)

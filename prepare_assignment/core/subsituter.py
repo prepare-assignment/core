@@ -1,6 +1,5 @@
 import json
 import logging
-import shlex
 from typing import Dict, Any
 
 from prepare_assignment.data.constants import HAS_SUB_REGEX, SUB_REGEX
@@ -12,11 +11,11 @@ actions_logger = logging.getLogger("actions")
 def __to_string(value: Any) -> str:
     """
     Convert a value to string for substitution.
-    We assume we only have the types that are valid in our yaml files, see the schemas.
+    We assume we only have the types that are valid in our yaml files, for more info see the schemas.
     The following conversions happen:
     - string -> keep as is
     - int, float, bool -> use built in toString
-    - list -> json.dumps
+    - list -> 'json.dumps'
 
 
     :param value: the value to convert
