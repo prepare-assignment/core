@@ -42,6 +42,13 @@ jobs:
     - name: Install dependencies
       if: steps.cached-poetry-venv.outputs.cache-hit != 'true'
       run: poetry install --no-interaction
+    - name: Setup git
+      uses: webfactory/ssh-agent@v0.7.0
+      with:
+        ssh-private-key: |
+          ${{ secrets.ACTIONS_DEPLOY_KEY }}
+          ${{ SECRETS.ACTIONS_COMPOSITE_KEY }}
+          ${{ SECRETS.ACTIONS_CODESTRIPPER_KEY }}
     - name: Run tests
       run: |
         source $VENV

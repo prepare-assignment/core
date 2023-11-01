@@ -1,21 +1,22 @@
 import json
 import logging
 import os
-import shutil
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional, TypedDict
 
 from git import Repo
 from importlib_resources import files
-from virtualenv import cli_run # type: ignore
+from virtualenv import cli_run  # type: ignore
 
 from prepare_assignment.core.validator import validate_action_definition, validate_action, load_yaml, \
     validate_default_values
 from prepare_assignment.data.action_definition import ActionDefinition, CompositeActionDefinition, \
     PythonActionDefinition
 from prepare_assignment.data.action_properties import ActionProperties
+from prepare_assignment.data.constants import CONFIG
 from prepare_assignment.data.errors import DependencyError, ValidationError
 from prepare_assignment.utils.cache import get_cache_path
 
@@ -34,27 +35,32 @@ def __repo_path(props: ActionProperties) -> Path:
 
 def __download_action(props: ActionProperties) -> Path:
     """
-    Download (using git clone) the action
-    :param organization: GitHub organization/username
-    :param action: action name
-    :returns str: the path where the repo is checked out
+    Download the action (using git clone)
+
+    :param props: action properties
+    :returns Path: the path where the repo is checked out
     """
     path: Path = __repo_path(props)
     path.mkdir(parents=True, exist_ok=True)
-    # For now use ssh protocol, need to figure out how to use system defined one
-    git_url: str = f"git@github.com:{props.organization}/{props.name}.git"
+    git_url: str
+    if CONFIG.GIT_MODE == "https":
+        git_url = f"https://github.com/{props.organization}/{props.name}.git"
+    else:
+        git_url = f"git@github.com:{props.organization}/{props.name}.git"
     logger.debug(f"Cloning repository: {git_url}")
-    repo = Repo.clone_from(git_url, path)
-    if props.version != "latest":
-        logger.debug(f"Checking out correct version of repository: {props.version}")
-        repo.git.checkout(props.version)
+    with Repo.clone_from(git_url, path) as repo:
+        if props.version != "latest":
+            logger.debug(f"Checking out correct version of repository: {props.version}")
+            repo.git.checkout(props.version)
     return path
 
 
-def __build_json_schema(organization: str, action: ActionDefinition) -> str:
+def __build_json_schema(props: ActionProperties, action: ActionDefinition) -> str:
     logger.debug(f"Building json schema for '{action.id}'")
     schema = template.replace("{{action-id}}", action.id)
-    schema = schema.replace("{{organization}}", organization)
+    schema = schema.replace("{{action-version}}", props.version)
+    schema = schema.replace("{{organization}}", props.organization)
+    schema = schema.replace("{{action}}", str(props))
     schema = schema.replace("{{action-name}}", action.name)
     schema = schema.replace("{{action-description}}", action.description)
     required: List[str] = []
@@ -64,7 +70,8 @@ def __build_json_schema(organization: str, action: ActionDefinition) -> str:
         if inp.required:
             required.append(inp.name)
     if len(properties) > 0:
-        output = ',    \n"with": {\n      "type": "object",\n      "additionalProperties": false,\n      "properties": {\n'
+        output = (',    \n"with": {\n      "type": "object",\n      "additionalProperties": false,\n '
+                  '     "properties": {\n')
         output += ",\n".join(properties) + "\n    }"
         if len(required) > 0:
             schema = schema.replace("{{required}}", ', "with"')
@@ -103,7 +110,10 @@ def __action_dict_to_definition(action: Any, path: str) -> ActionDefinition:
 
 
 def __action_install_dependencies(action_path: str) -> None:
-    venv_path = os.path.join(action_path, "venv", "bin", "python")
+    if sys.platform == "win32":
+        venv_path = os.path.join(action_path, "venv", "scripts", "python.exe")
+    else:
+        venv_path = os.path.join(action_path, "venv", "bin", "python")
     repo_path = os.path.join(action_path, "repo")
     requirements_path = os.path.join(repo_path, "requirements.txt")
     pyproject_path = os.path.join(repo_path, "pyproject.toml")
@@ -173,7 +183,6 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
 
     action_def = actions.pop()
     act: str = action_def["uses"]
-    json_schema: Optional[Any] = None
     # Check if we have already loaded the action
     if parsed.get(act, None) is None:
         logger.debug(f"Action '{act}' has not been loaded in this run")
@@ -181,7 +190,6 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
 
         # Check if action (therefore the path) has already been downloaded in previous run
         action_path = os.path.join(cache_path, props.organization, props.name, props.version)
-        action: Optional[ActionDefinition] = None
         repo_path = __repo_path(props)
         yaml_path = os.path.join(repo_path, "action.yml")
         if os.path.isdir(action_path):
@@ -192,7 +200,7 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
             __download_action(props)
             # Validate that the action.yml is valid
             action_yaml = validate_action_definition(yaml_path)
-            action = __action_dict_to_definition(action_yaml, action_path)
+            action: ActionDefinition = __action_dict_to_definition(action_yaml, action_path)
             validate_default_values(action)
             # Check if it is a composite action, in that case we might need to retrieve more actions
             if isinstance(action, CompositeActionDefinition):
@@ -204,11 +212,12 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
                         all_actions.append(step)
                 parsed = __prepare_actions(str(repo_path), all_actions, parsed)
             else:
-                main_path = os.path.join(repo_path, action.main)  # type: ignore
+                main_path = os.path.join(repo_path, Path(action.main))  # type: ignore
                 if not os.path.isfile(main_path):
-                    raise ValidationError(f"Main file '{action.main}' does not exist for action '{action.name}'") # type: ignore
+                    error_msg = f"Main file '{action.main}' does not exist for action '{action.name}'"  # type: ignore
+                    raise ValidationError(error_msg)
             # Now we can build a schema for this action
-            schema = __build_json_schema(props.organization, action)
+            schema = __build_json_schema(props, action)
             json_schema = json.loads(schema)
             with open(os.path.join(action_path, f"{props.name}.schema.json"), 'w') as handle:
                 handle.write(schema)
@@ -216,7 +225,8 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
             cli_run([os.path.join(action_path, "venv")])
             # Install dependencies
             __action_install_dependencies(action_path)
-            parsed[act] = {"schema": json_schema, "action": action}
+            combined: ActionStuff = {"schema": json_schema, "action": action}
+            parsed[act] = combined
             if action_def.get("with", None) is None:
                 action_def["with"] = {}
     validate_action(file, action_def, parsed[act]["schema"])
@@ -225,13 +235,16 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
 
 def prepare_actions(prepare_file: str, steps: Dict[str, Any]) -> Dict[str, ActionDefinition]:
     """
-    Make sure that the action is available.
-    If not available:
+    Make sure that the actions are available for the runner.
+
+    If an action is not available:
     1. Clone the repository
     2. Checkout the correct version
     3. Generate json schema for validation
-    :param steps: The actions to prepare_assignment
-    :param prepare_file
+    4. Validate action
+
+    :param prepare_file the name/path to the prepare file
+    :param steps: The actions of the prepare file
     :return: None
     """
     logger.debug("========== Preparing actions")

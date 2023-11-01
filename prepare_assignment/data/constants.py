@@ -1,5 +1,12 @@
+import logging
+import os
 import re
+import shutil
+import sys
 from typing import Final, Dict, Type, List
+
+from prepare_assignment.data.config import Config
+from prepare_assignment.utils.executables import get_bash_path
 
 TYPE_MAPPING: Final[Dict[str, Type]] = {
     "string": str,
@@ -19,3 +26,9 @@ SUBSTITUTIONS: Final[List[str]] = [
 ]
 
 SUB_REGEX: Final[re.Pattern] = re.compile("|".join(SUBSTITUTIONS))
+
+LOG_LEVEL_TRACE: Final[int] = logging.DEBUG - 5
+
+CONFIG: Config = Config()
+
+BASH_EXECUTABLE: Final[str] = get_bash_path()

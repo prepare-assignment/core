@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/{{organization}}/{{action-id}}/{{action-id}}.schema.json",
+  "$id": "https://github.com/{{organization}}/{{action-id}}/{{action-version}}/{{action-id}}.schema.json",
   "additionalProperties": false,
   "title": "{{action-name}}",
   "description": "{{action-description}}",
@@ -13,7 +13,7 @@
       "type": "string"
     },
     "uses": {
-      "const": "{{action-id}}"
+      "const": "{{action}}"
     }{{with}}
   },
   "required": [

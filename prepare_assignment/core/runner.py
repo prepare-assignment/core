@@ -3,7 +3,7 @@ import logging
 import os.path
 import shlex
 import subprocess
-from subprocess import Popen, PIPE
+import sys
 from typing import Dict
 
 from prepare_toolbox.command import DEMARCATION
@@ -11,6 +11,7 @@ from prepare_toolbox.command import DEMARCATION
 from prepare_assignment.core.command import COMMAND_MAPPING
 from prepare_assignment.core.subsituter import substitute_all, __substitute
 from prepare_assignment.data.action_definition import ActionDefinition, PythonActionDefinition
+from prepare_assignment.data.constants import BASH_EXECUTABLE
 from prepare_assignment.data.prepare import Prepare, Action
 from prepare_assignment.data.step_environment import StepEnvironment
 
@@ -27,7 +28,8 @@ def __process_output_line(line: str, environment: StepEnvironment) -> None:
         command = parts[1]
         handler = COMMAND_MAPPING.get(command, None)
         if not handler:
-            logger.warning(f"Found command '{command}', but this version of prepare assignment has no handler registered")
+            logger.warning(f"Found command '{command}', "
+                           f"but this version of prepare assignment has no handler registered")
             return
         params = parts[2:]
         handler(environment, params)
@@ -40,15 +42,20 @@ def __execute_action(environment: StepEnvironment) -> None:
     action: PythonActionDefinition = environment.current_action_definition   # type: ignore
     venv_path = os.path.join(action.path, "venv")
     main_path = os.path.join(action.path, "repo", action.main)
-    executable = os.path.join(venv_path, "bin", "python")
+    executable: str
+    if sys.platform == "win32":
+        executable = os.path.join(venv_path, "Scripts", "python.exe")
+    else:
+        executable = os.path.join(venv_path, "bin", "python")
+    
     env = environment.environment.copy()
     env["VIRTUAL_ENV"] = venv_path
     for key, value in environment.current_action.with_.items():  # type: ignore
         sanitized = "PREPARE_" + key.replace(" ", "_").upper()
         env[sanitized] = json.dumps(value)
-    with Popen(
+    with subprocess.Popen(
         [executable, main_path],
-        stdout=PIPE,
+        stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         bufsize=1,
         universal_newlines=True,
@@ -62,15 +69,17 @@ def __execute_action(environment: StepEnvironment) -> None:
         print("Error code: 1")  # TODO: What to do if process fails?
 
 
-def __execute_shell_command(command: str) -> None:
+def __execute_shell_command(command: str, env: Dict[str, str]) -> None:
     logger.debug(f"Executing run '{command}'")  # type: ignore
-    args = shlex.split(f"bash -c {shlex.quote(command)}")
-    with Popen(
+    args = shlex.split(f"-c {shlex.quote(command)}")
+    args.insert(0, BASH_EXECUTABLE)
+    with subprocess.Popen(
         args,
-        stdout=PIPE,
+        stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         bufsize=1,
-        universal_newlines=True
+        universal_newlines=True,
+        env=env
     ) as process:
         if process.stdout is None:
             return
@@ -84,7 +93,7 @@ def __handle_action(mapping: Dict[str, ActionDefinition],
     # Check what kind of actions it is
     if action.is_run:
         command = __substitute(action.run, environment)  # type: ignore
-        __execute_shell_command(command)
+        __execute_shell_command(command, environment.environment)
     else:
         action_definition = mapping.get(action.uses)  # type: ignore
         substitute_all(action.with_, environment)  # type: ignore

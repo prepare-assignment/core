@@ -1,21 +1,48 @@
 import os
-import sys
 from pathlib import Path
 
 import pytest
+from pytest_mock import MockerFixture
 
 from prepare_assignment.utils import get_cache_path
 
 
-def test_cache_xdg_home() -> None:
-    old_cache_home = os.environ.get("XDG_CACHE_HOME", None)
+def test_cache_xdg_home(mocker: MockerFixture) -> None:
+    mock = mocker.patch("prepare_assignment.utils.cache.sys")
+    mock.platform = "linux"
+    mocker.patch.dict(os.environ, {"XDG_CACHE_HOME": "test"})
     expected = Path("test/prepare")
-    os.environ["XDG_CACHE_HOME"] = "test"
     cache_path = get_cache_path()
-    if old_cache_home is not None:
-        os.environ["XDG_CACHE_HOME"] = old_cache_home
-    if sys.platform == "linux":
-        same = cache_path == expected
-    else:
-        same = True
-    assert same
+    assert cache_path == expected
+
+
+def test_cache_linux(mocker: MockerFixture) -> None:
+    mock = mocker.patch("prepare_assignment.utils.cache.sys")
+    mock.platform = "linux"
+    expected = Path("~/.cache/prepare").expanduser()
+    cache_path = get_cache_path()
+    assert cache_path == expected
+
+
+def test_cache_darwin(mocker: MockerFixture) -> None:
+    mock = mocker.patch("prepare_assignment.utils.cache.sys")
+    mock.platform = "darwin"
+    expected = Path("~/Library/Caches/prepare").expanduser()
+    cache_path = get_cache_path()
+    assert cache_path == expected
+
+
+def test_cache_win32(mocker: MockerFixture) -> None:
+    mock = mocker.patch("prepare_assignment.utils.cache.sys")
+    mock.platform = "win32"
+    mocker.patch.dict(os.environ, {"LOCALAPPDATA": str(Path("AppData/Local"))})
+    expected = Path("AppData/Local/prepare/cache")
+    cache_path = get_cache_path()
+    assert cache_path == expected
+
+
+def test_cache_unsupported(mocker: MockerFixture) -> None:
+    mock = mocker.patch("prepare_assignment.utils.cache.sys")
+    mock.platform = "unsupported"
+    with pytest.raises(AssertionError):
+        get_cache_path()

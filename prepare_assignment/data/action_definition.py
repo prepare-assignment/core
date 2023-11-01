@@ -12,7 +12,7 @@ class ActionInputDefinition:
     description: str
     required: bool
     type: str
-    default: Optional[str] | Optional[List[Any]] = None
+    default: str | List[Any] | bool | int | float | None = None
     items: Optional[str] = None
 
     @classmethod

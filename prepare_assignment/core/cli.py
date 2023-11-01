@@ -10,6 +10,7 @@ from ruamel.yaml import YAML
 from prepare_assignment.core.preparer import prepare_actions
 from prepare_assignment.core.runner import run
 from prepare_assignment.core.validator import validate_prepare
+from prepare_assignment.data.constants import CONFIG
 from prepare_assignment.data.errors import ValidationError, DependencyError
 from prepare_assignment.data.prepare import Prepare
 from prepare_assignment.utils import set_logger_level
@@ -32,6 +33,13 @@ def add_commandline_arguments(parser: argparse.ArgumentParser) -> None:
                         action="count",
                         help="increase debug verbosity for prepare assignment",
                         default=0)
+    parser.add_argument("-g",
+                        "--git",
+                        nargs="?",
+                        const="ssh",
+                        default="ssh",
+                        choices=["ssh", "https"],
+                        help="Clone mode for git, options are 'ssh' (default) or 'https'")
 
 
 def __get_prepare_file(file: Optional[str]) -> str:
@@ -40,7 +48,8 @@ def __get_prepare_file(file: Optional[str]) -> str:
     :param file: file name provided by the user
     :return: path to file
     :raises FileNotFoundError: if file doesn't exist
-    :raises AssertionError: if there is both a prepare_assignment.yml and a prepare_assignment.yml and no file is provided by the user
+    :raises AssertionError: if there is both a prepare_assignment.yml and a prepare_assignment.yml
+                            and no file is provided by the user
     :raises FileNotFoundError: if the provided 'file' is not a file
     """
     if file is None:
@@ -66,6 +75,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     add_commandline_arguments(parser)
     args = parser.parse_args()
+    CONFIG.DEBUG = args.debug  # type: ignore
+    CONFIG.GIT_MODE = args.git  # type: ignore
+    CONFIG.VERBOSITY = args.verbosity  # type: ignore
 
     # Set the logger
     add_logging_level("TRACE", logging.DEBUG - 5, "trace")

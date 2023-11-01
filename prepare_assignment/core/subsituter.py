@@ -1,6 +1,5 @@
 import json
 import logging
-import shlex
 from typing import Dict, Any
 
 from prepare_assignment.data.constants import HAS_SUB_REGEX, SUB_REGEX
@@ -10,6 +9,18 @@ actions_logger = logging.getLogger("actions")
 
 
 def __to_string(value: Any) -> str:
+    """
+    Convert a value to string for substitution.
+    We assume we only have the types that are valid in our yaml files, for more info see the schemas.
+    The following conversions happen:
+    - string -> keep as is
+    - int, float, bool -> use built in toString
+    - list -> 'json.dumps'
+
+
+    :param value: the value to convert
+    :return: the value as a string
+    """
     if isinstance(value, str):
         return value
     if isinstance(value, (int, float, bool)):
@@ -18,6 +29,15 @@ def __to_string(value: Any) -> str:
 
 
 def __substitute(value: str, environment: StepEnvironment) -> str:
+    """
+    Substitute commands in a string with the matching values from the environment.
+    ${{ inputs.<name> }} -> replace with the matching input
+    ${{ steps.<step>.outputs.<name>}} -> replace with the matching output of the correct step
+
+    :param value: the string to substitute on
+    :param environment: the environment to take the values from
+    :return: the substituted string, on the original in case there is no command present
+    """
     # Find all ${{ }}
     substitutions = []
     for expression in HAS_SUB_REGEX.finditer(value):
@@ -57,6 +77,13 @@ def __substitute(value: str, environment: StepEnvironment) -> str:
 
 
 def substitute_all(values: Dict[str, Any], environment: StepEnvironment) -> None:
+    """
+    Substitute (in-place) all commands with the matching values.
+
+    :param values: the inputs to check for commands and substitute
+    :param environment: the environment containing the substitutions
+    :return: None
+    """
     for key, value in values.items():
         # For now, we only support it on string type
         if isinstance(value, str):
