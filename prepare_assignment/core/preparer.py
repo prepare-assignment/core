@@ -212,7 +212,7 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
                         all_actions.append(step)
                 parsed = __prepare_actions(str(repo_path), all_actions, parsed)
             else:
-                main_path = os.path.join(repo_path, action.main)  # type: ignore
+                main_path = os.path.join(repo_path, Path(action.main))  # type: ignore
                 if not os.path.isfile(main_path):
                     error_msg = f"Main file '{action.main}' does not exist for action '{action.name}'"  # type: ignore
                     raise ValidationError(error_msg)
