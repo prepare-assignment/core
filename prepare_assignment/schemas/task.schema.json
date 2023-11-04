@@ -9,16 +9,16 @@
       "pattern": "^[a-z][a-z0-9-]*$"
     },
     "name": {
-      "description": "Name of the action",
+      "description": "Name of the task",
       "type": "string",
       "pattern": "^[_a-zA-Z][a-zA-Z0-9_\\-\\s]*$"
     },
     "description": {
-      "description": "Description of what the action does",
+      "description": "Description of what the task does",
       "type": "string"
     },
     "inputs": {
-      "description": "Input parameters passed to the action",
+      "description": "Input parameters passed to the task",
       "type": "object",
       "patternProperties": {
         "^[_a-zA-Z][a-zA-Z0-9_-]*$": {
@@ -95,7 +95,7 @@
       }
     },
     "outputs": {
-      "description": "Outputs from an action, that can be used in subsequent actions",
+      "description": "Outputs from a task, that can be used in subsequent tasks",
       "type": "object",
       "patternProperties": {
         "^[_a-zA-Z][a-zA-Z0-9_-]*$": {
@@ -177,7 +177,7 @@
         "main": {
           "type": "string"
         },
-        "steps": { "type": "array"}
+        "tasks": { "type": "array"}
       },
       "allOf": [
         {
@@ -200,7 +200,7 @@
           "else": {
             "required": [
               "using",
-              "steps"
+              "tasks"
             ]
           }
         }

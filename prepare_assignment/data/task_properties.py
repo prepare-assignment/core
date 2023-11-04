@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class ActionProperties:
+class TaskProperties:
     organization: str
     name: str
     version: str

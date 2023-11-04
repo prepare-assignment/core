@@ -11,7 +11,7 @@ from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 from ruamel.yaml import YAML
 
-from prepare_assignment.data.action_definition import ActionDefinition
+from prepare_assignment.data.task_definition import TaskDefinition
 from prepare_assignment.data.errors import ValidationError as VE
 from prepare_assignment.utils.default_validator import DefaultValidatingValidator
 
@@ -31,8 +31,8 @@ type_map: Dict[str, Type] = {
 def validate_prepare(prepare_file: str, prepare: Dict[str, Any]) -> None:
     """
     Validate that the prepare_assignment.y(a)ml file has the correct syntax
-    NOTE: this does not validate all actions, this is done in the
-    validate_actions function
+    NOTE: this does not validate all tasks, this is done in the
+    validate_tasks function
     :param prepare_file: path/name of the prepare file
     :param prepare: The parsed yaml contents
     :return: None
@@ -52,24 +52,23 @@ def validate_prepare(prepare_file: str, prepare: Dict[str, Any]) -> None:
     logger.debug("✓ Prepare file is valid")
 
 
-def validate_action(file: str, action: Dict[str, Any], json_schema: Any) -> None:
+def validate_tasks(file: str, task: Dict[str, Any], json_schema: Any) -> None:
     """
-    Validate all actions based on their respective json schemas
-    NOTE: this assumes that all actions are available and that it's json schema has been generated
-    :param action The action definition
-    :param json_schema the schema to validate agains
-    :param file the name/path of the action definition file
+    Validate all tasks based on their respective json schemas
+    NOTE: this assumes that all tasks are available and that it's json schema has been generated
+    :param task The task definition
+    :param json_schema the schema to validate against
+    :param file the name/path of the task definition file
     :return: None
-    :raises: ValidationError if an action cannot be validated against its respective schema
+    :raises: ValidationError if a task cannot be validated against its respective schema
     """
-    name = action["name"]
-    action_name = action["uses"]
-    logger.debug(f"Validating '{name}' ({action_name})")
+    name = task["name"]
+    task_name = task["uses"]
+    logger.debug(f"Validating '{name}' ({task_name})")
     try:
-        # validate(action, json_schema, cls=DefaultValidatingValidator)
-        DefaultValidatingValidator(json_schema).validate(action)
+        DefaultValidatingValidator(json_schema).validate(task)
     except ValidationError as ve:
-        message = (f"Error in: {file}, unable to verify action '{name}' ({action_name})\n\t "
+        message = (f"Error in: {file}, unable to verify task '{name}' ({task_name})\n\t "
                    f"-> {ve.json_path}: {ve.message}")
         raise VE(message)
 
@@ -85,50 +84,50 @@ def load_yaml(path: str | os.PathLike[str] | os.PathLike) -> Any:
     return yaml.load(path)
 
 
-def validate_action_definition(path: str | os.PathLike[str] | os.PathLike) -> Any:
+def validate_task_definition(path: str | os.PathLike[str] | os.PathLike) -> Any:
     """
-    Validate that the action definition follows the schema
+    Validate that the task definition follows the schema
 
-    :param path: to the action definition file
+    :param path: to the task definition file
     :return: the parsed yaml file
     """
-    logger.debug("Validating action definition")
+    logger.debug("Validating task definition")
 
     # Load the validation jsonschema
-    schema_path = files().joinpath('../schemas/action.schema.json')
+    schema_path = files().joinpath('../schemas/task.schema.json')
     schema: Dict[str, Any] = json.loads(schema_path.read_text())
 
-    action_definition = load_yaml(path)
+    task_definition = load_yaml(path)
 
     try:
-        validate(action_definition, schema, cls=DefaultValidatingValidator)
-        # Overwrite the action.yml file as we might have added default values
+        validate(task_definition, schema, cls=DefaultValidatingValidator)
+        # Overwrite the task.yml file as we might have added default values
         with open(path, 'w') as handle:
-            yaml.dump(action_definition, handle)
+            yaml.dump(task_definition, handle)
     except ValidationError as ve:
         message = f"Unable to verify: {path}\n\t -> {ve.json_path}: {ve.message}"
         raise VE(message)
 
-    return action_definition
+    return task_definition
 
 
-def validate_default_values(action: ActionDefinition) -> None:
+def validate_default_values(task: TaskDefinition) -> None:
     """
     Validate that the default values are of the correct type.
     For a list this means that all default values should be of the 'item' type.
 
-    :param action: for which to verify the default values
+    :param task: for which to verify the default values
     :return: None
     :raises ValidationError if any of the default values is of the wrong type
     """
-    for input in action.inputs:
+    for input in task.inputs:
         if input.default is None:
             continue
 
         # Check that the default type is of the type we expect
         if not isinstance(input.default, type_map[input.type]):
             raise VE(
-                f"Unable to verify action '{action.name}', default value for input '{input.name}' is of the wrong type"
+                f"Unable to verify task '{task.name}', default value for input '{input.name}' is of the wrong type"
                 f", expected '{input.type}', but got '{type(input.default)}'")
 
         # If we expect an array, validate that all elements are of the correct type

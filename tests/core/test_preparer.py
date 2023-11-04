@@ -9,7 +9,7 @@ import git
 import pytest
 from pytest_mock import MockerFixture
 
-from prepare_assignment.core.preparer import prepare_actions, __action_install_dependencies
+from prepare_assignment.core.preparer import prepare_tasks, __task_install_dependencies
 from prepare_assignment.data.errors import DependencyError
 from prepare_assignment.utils import get_cache_path
 from virtualenv import cli_run  # type: ignore
@@ -21,7 +21,7 @@ PREPARE: Final[Dict[str, Any]] = {
                                                                   'working-directory': 'solution', 'verbosity': 5}},
         {'name': 'remove', 'uses': 'remove', 'id': 'remove', 'with': {'input': ['out', '*.zip'], 'force': True,
                                                                       'recursive': True}},
-        {'name': 'run command', 'run': "echo '${{ steps.remove.outputs.files }}' | jq"}
+        {'name': 'run command', 'run': "echo '${{ tasks.remove.outputs.files }}' | jq"}
     ]
 }
 
@@ -59,18 +59,18 @@ def __clean_cache() -> None:
     Path(cache_path).mkdir(parents=True, exist_ok=True)
 
 
-def test_prepare_run_action() -> None:
+def test_prepare_run_task() -> None:
     prepare = {
         'prepare': [
-            {'name': 'run command', 'run': "echo '${{ steps.remove.outputs.files }}' | jq"}
+            {'name': 'run command', 'run': "echo '${{ tasks.remove.outputs.files }}' | jq"}
         ]
     }
     __clean_cache()
-    mapping = prepare_actions("prepare.yml", prepare)
+    mapping = prepare_tasks("prepare.yml", prepare)
     assert len(mapping) == 0
 
 
-def test_prepare_python_action() -> None:
+def test_prepare_python_task() -> None:
     prepare = {
         'prepare': [
             {'name': 'remove', 'uses': 'remove', 'with': {'input': ['out', '*.zip'], 'force': True}}
@@ -78,7 +78,7 @@ def test_prepare_python_action() -> None:
     }
     __clean_cache()
 
-    mapping = prepare_actions("prepare.yml", prepare)
+    mapping = prepare_tasks("prepare.yml", prepare)
     assert len(mapping) == 1
 
 
@@ -90,8 +90,8 @@ def test_prepare_already_available(mocker: MockerFixture) -> None:
     }
     __clean_cache()
     spy = mocker.spy(git.Repo, "clone_from")
-    prepare_actions("prepare.yml", prepare)
-    mapping = prepare_actions("prepare.yml", prepare)
+    prepare_tasks("prepare.yml", prepare)
+    mapping = prepare_tasks("prepare.yml", prepare)
     assert len(mapping) == 1
     spy.assert_called_once()
 
@@ -104,11 +104,11 @@ def test_prepare_specific_version() -> None:
     }
     __clean_cache()
 
-    mapping = prepare_actions("prepare.yml", prepare)
+    mapping = prepare_tasks("prepare.yml", prepare)
     assert len(mapping) == 1
 
 
-def test_prepare_composite_action(mocker: MockerFixture) -> None:
+def test_prepare_composite_task(mocker: MockerFixture) -> None:
     prepare = {
         'prepare': [
             {'name': 'composite', 'uses': 'composite', 'with': {'input': 'test'}}
@@ -116,10 +116,10 @@ def test_prepare_composite_action(mocker: MockerFixture) -> None:
     }
     __clean_cache()
     spy = mocker.spy(git.Repo, "clone_from")
-    mapping = prepare_actions("prepare.yml", prepare)
+    mapping = prepare_tasks("prepare.yml", prepare)
     assert len(mapping) == 2
     assert spy.call_count == 2
-    mapping = prepare_actions("prepare.yml", prepare)
+    mapping = prepare_tasks("prepare.yml", prepare)
     assert len(mapping) == 2
     # Should load from disk, not clone again
     assert spy.call_count == 2
@@ -133,4 +133,4 @@ def test_install_wrong_dependencies() -> None:
             os.mkdir(repo_path)
             with open(os.path.join(repo_path, "requirements.txt"), "w") as handle:
                 handle.write("prepare_toolbox==0.0.0")
-            __action_install_dependencies(tmpdir)
+            __task_install_dependencies(tmpdir)

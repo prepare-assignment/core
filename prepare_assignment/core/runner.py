@@ -10,17 +10,17 @@ from prepare_toolbox.command import DEMARCATION
 
 from prepare_assignment.core.command import COMMAND_MAPPING
 from prepare_assignment.core.subsituter import substitute_all, __substitute
-from prepare_assignment.data.action_definition import ActionDefinition, PythonActionDefinition
+from prepare_assignment.data.task_definition import TaskDefinition, PythonTaskDefinition
 from prepare_assignment.data.constants import BASH_EXECUTABLE
-from prepare_assignment.data.prepare import Prepare, Action
-from prepare_assignment.data.step_environment import StepEnvironment
+from prepare_assignment.data.prepare import Prepare, Task
+from prepare_assignment.data.job_environment import JobEnvironment
 
 # Get the logger
 logger = logging.getLogger("prepare_assignment")
-actions_logger = logging.getLogger("actions")
+tasks_logger = logging.getLogger("tasks")
 
 
-def __process_output_line(line: str, environment: StepEnvironment) -> None:
+def __process_output_line(line: str, environment: JobEnvironment) -> None:
     if line.startswith(DEMARCATION):
         parts = line.split(DEMARCATION)
         if len(parts) <= 1:
@@ -34,14 +34,14 @@ def __process_output_line(line: str, environment: StepEnvironment) -> None:
         params = parts[2:]
         handler(environment, params)
     else:
-        actions_logger.trace(line)  # type: ignore
+        tasks_logger.trace(line)  # type: ignore
 
 
-def __execute_action(environment: StepEnvironment) -> None:
-    logger.debug(f"Executing action '{environment.current_action.name}'")  # type: ignore
-    action: PythonActionDefinition = environment.current_action_definition   # type: ignore
-    venv_path = os.path.join(action.path, "venv")
-    main_path = os.path.join(action.path, "repo", action.main)
+def __execute_task(environment: JobEnvironment) -> None:
+    logger.debug(f"Executing task '{environment.current_task.name}'")  # type: ignore
+    task: PythonTaskDefinition = environment.current_task_definition   # type: ignore
+    venv_path = os.path.join(task.path, "venv")
+    main_path = os.path.join(task.path, "repo", task.main)
     executable: str
     if sys.platform == "win32":
         executable = os.path.join(venv_path, "Scripts", "python.exe")
@@ -50,7 +50,7 @@ def __execute_action(environment: StepEnvironment) -> None:
     
     env = environment.environment.copy()
     env["VIRTUAL_ENV"] = venv_path
-    for key, value in environment.current_action.with_.items():  # type: ignore
+    for key, value in environment.current_task.with_.items():  # type: ignore
         sanitized = "PREPARE_" + key.replace(" ", "_").upper()
         env[sanitized] = json.dumps(value)
     with subprocess.Popen(
@@ -84,39 +84,39 @@ def __execute_shell_command(command: str, env: Dict[str, str]) -> None:
         if process.stdout is None:
             return
         for line in process.stdout:
-            actions_logger.trace(line)  # type: ignore
+            tasks_logger.trace(line)  # type: ignore
 
 
-def __handle_action(mapping: Dict[str, ActionDefinition],
-                    action: Action,
-                    environment: StepEnvironment) -> None:
-    # Check what kind of actions it is
-    if action.is_run:
-        command = __substitute(action.run, environment)  # type: ignore
+def __handle_task(mapping: Dict[str, TaskDefinition],
+                  task: Task,
+                  environment: JobEnvironment) -> None:
+    # Check what kind of task it is
+    if task.is_run:
+        command = __substitute(task.run, environment)  # type: ignore
         __execute_shell_command(command, environment.environment)
     else:
-        action_definition = mapping.get(action.uses)  # type: ignore
-        substitute_all(action.with_, environment)  # type: ignore
-        if action_definition.is_composite:  # type: ignore
+        task_definition = mapping.get(task.uses)  # type: ignore
+        substitute_all(task.with_, environment)  # type: ignore
+        if task_definition.is_composite:  # type: ignore
             sub_env = environment.environment.copy()
-            sub_environment = StepEnvironment(sub_env, outputs={}, inputs=action.with_)  # type: ignore
-            for act in action_definition.steps:  # type: ignore
-                act = Action.of(act)
-                __handle_action(mapping, act, sub_environment)
+            sub_environment = JobEnvironment(sub_env, outputs={}, inputs=task.with_)  # type: ignore
+            for subtask in task_definition.tasks:  # type: ignore
+                subtask = Task.of(subtask)
+                __handle_task(mapping, subtask, sub_environment)
         else:
-            environment.current_action_definition = action_definition  # type: ignore
-            environment.current_action = action
-            environment.outputs[action.key] = {}
-            __execute_action(environment)
+            environment.current_task_definition = task_definition  # type: ignore
+            environment.current_task = task
+            environment.outputs[task.key] = {}
+            __execute_task(environment)
 
 
-def run(prepare: Prepare, mapping: Dict[str, ActionDefinition]) -> None:
+def run(prepare: Prepare, mapping: Dict[str, TaskDefinition]) -> None:
     logger.debug("========== Running prepare_assignment assignment")
-    for step, actions in prepare.steps.items():
-        logger.debug(f"Running step: {step}")
+    for job, tasks in prepare.jobs.items():
+        logger.debug(f"Running job: {job}")
         env = os.environ.copy()
-        step_env = StepEnvironment(env, {}, {})
-        for action in actions:
-            __handle_action(mapping, action, step_env)
+        step_env = JobEnvironment(env, {}, {})
+        for task in tasks:
+            __handle_task(mapping, task, step_env)
 
     logger.debug("✓ Prepared :)")

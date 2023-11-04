@@ -1,9 +1,9 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/{{organization}}/{{action-id}}/{{action-version}}/{{action-id}}.schema.json",
+  "$id": "https://github.com/{{organization}}/{{task-id}}/{{task-version}}/{{task-id}}.schema.json",
   "additionalProperties": false,
-  "title": "{{action-name}}",
-  "description": "{{action-description}}",
+  "title": "{{task-name}}",
+  "description": "{{task-description}}",
   "type": "object",
   "properties": {
     "name": {
@@ -13,7 +13,7 @@
       "type": "string"
     },
     "uses": {
-      "const": "{{action}}"
+      "const": "{{task}}"
     }{{with}}
   },
   "required": [

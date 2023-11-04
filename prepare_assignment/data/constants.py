@@ -21,8 +21,8 @@ HAS_SUB_REGEX: Final[re.Pattern] = re.compile(r"(?P<exp>\${{\s*(?P<content>.*?)\
 SUBSTITUTIONS: Final[List[str]] = [
     # ${{ inputs.<input> }}
     r"inputs\.(?P<inputs>[_a-zA-Z][a-zA-Z0-9_-]*)",
-    # ${{ steps.<step>.outputs.<output> }}
-    r"steps\.(?P<outputs>(?P<step>[_a-zA-Z][a-zA-Z0-9_-]*)\.outputs\.(?P<output>[_a-zA-Z][a-zA-Z0-9_-]*))"
+    # ${{ tasks.<step>.outputs.<output> }}
+    r"tasks\.(?P<outputs>(?P<step>[_a-zA-Z][a-zA-Z0-9_-]*)\.outputs\.(?P<output>[_a-zA-Z][a-zA-Z0-9_-]*))"
 ]
 
 SUB_REGEX: Final[re.Pattern] = re.compile("|".join(SUBSTITUTIONS))

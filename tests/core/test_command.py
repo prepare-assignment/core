@@ -6,24 +6,24 @@ import pytest
 
 from prepare_assignment.core.command import handle_set_failed, handle_debug, handle_info, handle_warning, \
     handle_error, handle_set_output
-from prepare_assignment.data.action_definition import PythonActionDefinition, ActionOutputDefinition
-from prepare_assignment.data.prepare import UsesAction
-from prepare_assignment.data.step_environment import StepEnvironment
+from prepare_assignment.data.task_definition import PythonTaskDefinition, TaskOutputDefinition
+from prepare_assignment.data.prepare import UsesTask
+from prepare_assignment.data.job_environment import JobEnvironment
 
-output = ActionOutputDefinition(description="test", items=None, type="string")
-action_definition = PythonActionDefinition(outputs={'test': output},
-                                           description="test",
-                                           inputs=[],
-                                           id="test",
-                                           name="test",
-                                           path="path",
-                                           main="main.py")
-action = UsesAction(name="test", id="id", with_={}, uses="test")
-env = StepEnvironment(environment={},
-                      outputs={'id': {}},
-                      inputs={},
-                      current_action_definition=action_definition,
-                      current_action=action)
+output = TaskOutputDefinition(description="test", items=None, type="string")
+task_definition = PythonTaskDefinition(outputs={'test': output},
+                                       description="test",
+                                       inputs=[],
+                                       id="test",
+                                       name="test",
+                                       path="path",
+                                       main="main.py")
+task = UsesTask(name="test", id="id", with_={}, uses="test")
+env = JobEnvironment(environment={},
+                     outputs={'id': {}},
+                     inputs={},
+                     current_task_definition=task_definition,
+                     current_task=task)
 
 
 @pytest.mark.parametrize(
@@ -35,7 +35,7 @@ env = StepEnvironment(environment={},
         (handle_debug, logging.DEBUG),
     ]
 )
-def test_handle_functions(function: Callable[[StepEnvironment, List[str]], None],
+def test_handle_functions(function: Callable[[JobEnvironment, List[str]], None],
                           level: int,
                           caplog: pytest.LogCaptureFixture) -> None:
     message = "message"
@@ -56,7 +56,7 @@ def test_handle_functions(function: Callable[[StepEnvironment, List[str]], None]
         handle_set_output
     ]
 )
-def test_handle_functions_fail(function: Callable[[StepEnvironment, List[str]], None]) -> None:
+def test_handle_functions_fail(function: Callable[[JobEnvironment, List[str]], None]) -> None:
     with pytest.raises(AssertionError):
         function(env, [])
 
