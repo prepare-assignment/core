@@ -17,6 +17,48 @@ from prepare_assignment.utils import set_logger_level
 from prepare_assignment.utils.logger import add_logging_level
 
 
+def __prepare(args: argparse.Namespace):
+    CONFIG.DEBUG = args.debug  # type: ignore
+    CONFIG.GIT_MODE = args.git  # type: ignore
+    CONFIG.VERBOSITY = args.verbosity  # type: ignore
+
+    # Set the logger
+    add_logging_level("TRACE", logging.DEBUG - 5, "trace")
+    logger = logging.getLogger("prepare_assignment")
+    tasks_logger = logging.getLogger("tasks")
+    set_logger_level(logger, args.debug)
+    set_logger_level(tasks_logger, args.verbosity, prefix="\t[TASK] ", debug_linenumbers=False)
+
+    # Get the prepare_assignment.yml file
+    file = __get_prepare_file(args.file)
+    logger.debug(f"Found prepare_assignment config file at: {file}")
+
+    # Load the file
+    loader = YAML(typ='safe')
+    path = Path(file)
+    yaml = loader.load(path)
+
+    # Check if we have to change working directory
+    dirname = os.path.dirname(path)
+    if dirname:
+        os.chdir(dirname)
+    
+    # Execute all jobs
+    try:
+        validate_prepare(file, yaml)
+        mapping = prepare_tasks(file, yaml['jobs'])
+        prepare = Prepare.of(yaml)
+        run(prepare, mapping)
+    except PrepareTaskError as PE:
+        logger.error(PE.message)
+        if isinstance(PE.cause, PrepareError):
+            logger.error(PE.cause.message)
+        else:
+            logger.error(str(PE.cause))
+    except Exception as e:
+        logger.error(str(e))
+
+
 def add_commandline_arguments(parser: argparse.ArgumentParser) -> None:
     """
     Add command line arguments to the argparser
@@ -40,6 +82,7 @@ def add_commandline_arguments(parser: argparse.ArgumentParser) -> None:
                         default="ssh",
                         choices=["ssh", "https"],
                         help="Clone mode for git, options are 'ssh' (default) or 'https'")
+    parser.set_defaults(func=__prepare)
 
 
 def __get_prepare_file(file: Optional[str]) -> str:
@@ -53,11 +96,11 @@ def __get_prepare_file(file: Optional[str]) -> str:
     :raises FileNotFoundError: if the provided 'file' is not a file
     """
     if file is None:
-        files = get_matching_files("prepare_assignment.y{,a}ml")
+        files = get_matching_files("prepare.y{,a}ml")
         if len(files) == 0:
-            raise FileNotFoundError("No prepare_assignment.yml file found in working directory")
+            raise FileNotFoundError("No prepare.yml file found in working directory")
         elif len(files) > 1:
-            raise AssertionError("There is both a prepare_assignment.yml and a prepare_assignment.yml,"
+            raise AssertionError("There is both a prepare.yml and a prepare.yml,"
                                  " use the -f flag to specify which file to use")
         file = files[0]
     else:
@@ -75,38 +118,4 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     add_commandline_arguments(parser)
     args = parser.parse_args()
-    CONFIG.DEBUG = args.debug  # type: ignore
-    CONFIG.GIT_MODE = args.git  # type: ignore
-    CONFIG.VERBOSITY = args.verbosity  # type: ignore
-
-    # Set the logger
-    add_logging_level("TRACE", logging.DEBUG - 5, "trace")
-    logger = logging.getLogger("prepare_assignment")
-    tasks_logger = logging.getLogger("tasks")
-    set_logger_level(logger, args.debug)
-    set_logger_level(tasks_logger, args.verbosity, prefix="\t[TASK] ", debug_linenumbers=False)
-
-    # Get the prepare_assignment.yml file
-    file = __get_prepare_file(args.file)
-    logger.debug(f"Found prepare_assignment config file at: {file}")
-
-    # Load the file
-    loader = YAML(typ='safe')
-    path = Path(file)
-    yaml = loader.load(path)
-
-    # Execute all jobs
-    os.chdir(os.path.dirname(path))
-    try:
-        validate_prepare(file, yaml)
-        mapping = prepare_tasks(file, yaml['jobs'])
-        prepare = Prepare.of(yaml)
-        run(prepare, mapping)
-    except PrepareTaskError as PE:
-        logger.error(PE.message)
-        if isinstance(PE.cause, PrepareError):
-            logger.error(PE.cause.message)
-        else:
-            logger.error(str(PE.cause))
-    except Exception as e:
-        logger.error(str(e))
+    args.func(args)
