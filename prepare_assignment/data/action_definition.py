@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional, List, TypedDict
 
 
 @dataclass
@@ -122,3 +122,8 @@ class CompositeActionDefinition(ActionDefinition):
     @property
     def is_composite(self) -> bool:
         return True
+
+
+class ValidAction(TypedDict):
+    schema: Any
+    action: ActionDefinition

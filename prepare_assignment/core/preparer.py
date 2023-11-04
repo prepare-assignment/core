@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import shutil
 import subprocess
 import sys
 from datetime import datetime
@@ -14,10 +15,10 @@ from virtualenv import cli_run  # type: ignore
 from prepare_assignment.core.validator import validate_action_definition, validate_action, load_yaml, \
     validate_default_values
 from prepare_assignment.data.action_definition import ActionDefinition, CompositeActionDefinition, \
-    PythonActionDefinition
+    PythonActionDefinition, ValidAction
 from prepare_assignment.data.action_properties import ActionProperties
 from prepare_assignment.data.constants import CONFIG
-from prepare_assignment.data.errors import DependencyError, ValidationError
+from prepare_assignment.data.errors import DependencyError, ValidationError, PrepareActionError
 from prepare_assignment.utils.cache import get_cache_path
 
 # Set the cache path
@@ -143,15 +144,10 @@ def __action_install_dependencies(action_path: str) -> None:
         raise DependencyError(f"Unable to install dependencies for '{repo_path}', see '{file}' for more info")
 
 
-class ActionStuff(TypedDict):
-    schema: Any
-    action: ActionDefinition
-
-
 def __load_action_from_disk(action_name: str,
                             action_path: str,
                             props: ActionProperties,
-                            parsed: Dict[str, ActionStuff]
+                            parsed: Dict[str, ValidAction]
                             ) -> None:
     logger.debug(f"Action '{action_name}' is already available, loading from disk")
     repo_path = __repo_path(props)
@@ -171,8 +167,41 @@ def __load_action_from_disk(action_name: str,
             __load_action_from_disk(subaction_name, action_path, subprops, parsed)
 
 
-def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, ActionStuff]] = None) \
-        -> Dict[str, ActionStuff]:
+def __prepare_action(props: ActionProperties, action_path: str, repo_path: Path) -> ValidAction:
+    try:
+        # Download the action (clone the repository)
+        __download_action(props)
+        # Validate that the action.yml is valid
+        yaml_path = os.path.join(repo_path, "action.yml")
+        action_yaml = validate_action_definition(yaml_path)
+        action: ActionDefinition = __action_dict_to_definition(action_yaml, action_path)
+        validate_default_values(action)
+        if isinstance(action, PythonActionDefinition):
+            main_path = os.path.join(repo_path, Path(action.main))  # type: ignore
+            if not os.path.isfile(main_path):
+                error_msg = f"Main file '{action.main}' does not exist for action '{action.name}'"  # type: ignore
+                raise ValidationError(error_msg)
+            # Create a virtualenv for this action
+            cli_run([os.path.join(action_path, "venv")])
+            # Install dependencies
+            __action_install_dependencies(action_path)
+        # Now we can build a schema for this action
+        schema = __build_json_schema(props, action)
+        json_schema = json.loads(schema)
+        with open(os.path.join(action_path, f"{props.name}.schema.json"), 'w') as handle:
+            handle.write(schema)
+        return {"schema": json_schema, "action": action}
+    except Exception as e:
+        # If something went wrong in the previous steps,
+        # that means the action is not valid and should be removed
+        shutil.rmtree(action_path)
+        # We need to raise an exception, because if it was part of a composite action,
+        # then that action is also not valid
+        raise PrepareActionError(f"Unable to prepare action '{str(props)}'", e)
+
+
+def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, ValidAction]] = None) \
+        -> Dict[str, ValidAction]:
     # Unfortunately we cannot do this as a default value, see:
     # https://docs.python-guide.org/writing/gotchas/#mutable-default-arguments
     if parsed is None:
@@ -187,22 +216,16 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
     if parsed.get(act, None) is None:
         logger.debug(f"Action '{act}' has not been loaded in this run")
         props = __action_properties(act)
-
         # Check if action (therefore the path) has already been downloaded in previous run
         action_path = os.path.join(cache_path, props.organization, props.name, props.version)
         repo_path = __repo_path(props)
-        yaml_path = os.path.join(repo_path, "action.yml")
         if os.path.isdir(action_path):
             __load_action_from_disk(act, action_path, props, parsed)
         else:
             logger.debug(f"Action '{act}' is not available on this system")
-            # Download the action (clone the repository)
-            __download_action(props)
-            # Validate that the action.yml is valid
-            action_yaml = validate_action_definition(yaml_path)
-            action: ActionDefinition = __action_dict_to_definition(action_yaml, action_path)
-            validate_default_values(action)
+            valid_action = __prepare_action(props, action_path, repo_path)
             # Check if it is a composite action, in that case we might need to retrieve more actions
+            action = valid_action["action"]
             if isinstance(action, CompositeActionDefinition):
                 logger.debug(f"Action '{act}' is a composite action, preparing sub-actions")
                 all_actions: List[Any] = []
@@ -210,23 +233,17 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
                     name = step.get("uses", None)
                     if name is not None:
                         all_actions.append(step)
-                parsed = __prepare_actions(str(repo_path), all_actions, parsed)
-            else:
-                main_path = os.path.join(repo_path, Path(action.main))  # type: ignore
-                if not os.path.isfile(main_path):
-                    error_msg = f"Main file '{action.main}' does not exist for action '{action.name}'"  # type: ignore
-                    raise ValidationError(error_msg)
-            # Now we can build a schema for this action
-            schema = __build_json_schema(props, action)
-            json_schema = json.loads(schema)
-            with open(os.path.join(action_path, f"{props.name}.schema.json"), 'w') as handle:
-                handle.write(schema)
-            # Create a virtualenv for this action
-            cli_run([os.path.join(action_path, "venv")])
-            # Install dependencies
-            __action_install_dependencies(action_path)
-            combined: ActionStuff = {"schema": json_schema, "action": action}
-            parsed[act] = combined
+                try:
+                    parsed = __prepare_actions(str(repo_path), all_actions, parsed)
+                except PrepareActionError as PE:
+                    # If any of the subactions this composite action depend on fails,
+                    # we have to remove this action as well
+                    shutil.rmtree(action_path)
+                    raise PE
+                except Exception as e:
+                    shutil.rmtree(action_path)
+                    raise PrepareActionError(f"Unable to prepare action '{act}'", e)
+            parsed[act] = valid_action
             if action_def.get("with", None) is None:
                 action_def["with"] = {}
     validate_action(file, action_def, parsed[act]["schema"])

@@ -11,7 +11,7 @@ from prepare_assignment.core.preparer import prepare_actions
 from prepare_assignment.core.runner import run
 from prepare_assignment.core.validator import validate_prepare
 from prepare_assignment.data.constants import CONFIG
-from prepare_assignment.data.errors import ValidationError, DependencyError
+from prepare_assignment.data.errors import ValidationError, DependencyError, PrepareActionError, PrepareError
 from prepare_assignment.data.prepare import Prepare
 from prepare_assignment.utils import set_logger_level
 from prepare_assignment.utils.logger import add_logging_level
@@ -102,7 +102,11 @@ def main() -> None:
         mapping = prepare_actions(file, yaml['steps'])
         prepare = Prepare.of(yaml)
         run(prepare, mapping)
-    except ValidationError as ve:
-        logger.error(ve.message)
-    except DependencyError as de:
-        logger.error(de.message)
+    except PrepareActionError as PE:
+        logger.error(PE.message)
+        if isinstance(PE.cause, PrepareError):
+            logger.error(PE.cause.message)
+        else:
+            logger.error(str(PE.cause))
+    except Exception as e:
+        logger.error(str(e))
