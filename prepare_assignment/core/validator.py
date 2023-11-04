@@ -62,13 +62,15 @@ def validate_action(file: str, action: Dict[str, Any], json_schema: Any) -> None
     :return: None
     :raises: ValidationError if an action cannot be validated against its respective schema
     """
-    name = action["uses"]
-    logger.debug(f"Validating '{name}'")
+    name = action["name"]
+    action_name = action["uses"]
+    logger.debug(f"Validating '{name}' ({action_name})")
     try:
         # validate(action, json_schema, cls=DefaultValidatingValidator)
         DefaultValidatingValidator(json_schema).validate(action)
     except ValidationError as ve:
-        message = f"Error in: {file}, unable to verify action '{name}'\n\t -> {ve.json_path}: {ve.message}"
+        message = (f"Error in: {file}, unable to verify action '{name}' ({action_name})\n\t "
+                   f"-> {ve.json_path}: {ve.message}")
         raise VE(message)
 
 

@@ -246,6 +246,8 @@ def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, 
             parsed[act] = valid_action
             if action_def.get("with", None) is None:
                 action_def["with"] = {}
+    else:
+        logger.debug(f"Action '{act}' has already been loaded in this run")
     validate_action(file, action_def, parsed[act]["schema"])
     return __prepare_actions(file, actions, parsed)
 
