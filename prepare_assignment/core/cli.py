@@ -9,6 +9,7 @@ from ruamel.yaml import YAML
 
 from prepare_assignment.core.preparer import prepare_tasks
 from prepare_assignment.core.runner import run
+from prepare_assignment.core.tasks import list_tasks, remove_task, update_task, remove_all_tasks
 from prepare_assignment.core.validator import validate_prepare
 from prepare_assignment.data.constants import CONFIG
 from prepare_assignment.data.errors import ValidationError, DependencyError, PrepareTaskError, PrepareError
@@ -17,49 +18,7 @@ from prepare_assignment.utils import set_logger_level
 from prepare_assignment.utils.logger import add_logging_level
 
 
-def __prepare(args: argparse.Namespace):
-    CONFIG.DEBUG = args.debug  # type: ignore
-    CONFIG.GIT_MODE = args.git  # type: ignore
-    CONFIG.VERBOSITY = args.verbosity  # type: ignore
-
-    # Set the logger
-    add_logging_level("TRACE", logging.DEBUG - 5, "trace")
-    logger = logging.getLogger("prepare_assignment")
-    tasks_logger = logging.getLogger("tasks")
-    set_logger_level(logger, args.debug)
-    set_logger_level(tasks_logger, args.verbosity, prefix="\t[TASK] ", debug_linenumbers=False)
-
-    # Get the prepare_assignment.yml file
-    file = __get_prepare_file(args.file)
-    logger.debug(f"Found prepare_assignment config file at: {file}")
-
-    # Load the file
-    loader = YAML(typ='safe')
-    path = Path(file)
-    yaml = loader.load(path)
-
-    # Check if we have to change working directory
-    dirname = os.path.dirname(path)
-    if dirname:
-        os.chdir(dirname)
-    
-    # Execute all jobs
-    try:
-        validate_prepare(file, yaml)
-        mapping = prepare_tasks(file, yaml['jobs'])
-        prepare = Prepare.of(yaml)
-        run(prepare, mapping)
-    except PrepareTaskError as PE:
-        logger.error(PE.message)
-        if isinstance(PE.cause, PrepareError):
-            logger.error(PE.cause.message)
-        else:
-            logger.error(str(PE.cause))
-    except Exception as e:
-        logger.error(str(e))
-
-
-def add_commandline_arguments(parser: argparse.ArgumentParser) -> None:
+def __add_commandline_arguments(parser: argparse.ArgumentParser) -> None:
     """
     Add command line arguments to the argparser
     :param parser: The parser to add the arguments to
@@ -83,6 +42,25 @@ def add_commandline_arguments(parser: argparse.ArgumentParser) -> None:
                         choices=["ssh", "https"],
                         help="Clone mode for git, options are 'ssh' (default) or 'https'")
     parser.set_defaults(func=__prepare)
+
+    # Tasks subparser
+    subparsers = parser.add_subparsers()
+    task_parser = subparsers.add_parser("task")
+    task_subparsers = task_parser.add_subparsers()
+    list_task_parser = task_subparsers.add_parser("ls")
+    list_task_parser.set_defaults(func=list_tasks)
+    remove_task_parser = task_subparsers.add_parser("remove")
+    remove_task_parser.set_defaults(func=remove_task)
+    update_task_parser = task_subparsers.add_parser("update")
+    update_task_parser.set_defaults(func=update_task)
+
+    tasks_parser = subparsers.add_parser("tasks")
+    tasks_parser.set_defaults(func=list_tasks)
+    tasks_subparser = tasks_parser.add_subparsers()
+    remove_all_tasks_parser = tasks_subparser.add_parser("remove")
+    remove_all_tasks_parser.set_defaults(func=remove_all_tasks)
+
+
 
 
 def __get_prepare_file(file: Optional[str]) -> str:
@@ -110,12 +88,54 @@ def __get_prepare_file(file: Optional[str]) -> str:
     return file
 
 
+def __prepare(args: argparse.Namespace):
+    CONFIG.DEBUG = args.debug  # type: ignore
+    CONFIG.GIT_MODE = args.git  # type: ignore
+    CONFIG.VERBOSITY = args.verbosity  # type: ignore
+
+    # Set the logger
+    add_logging_level("TRACE", logging.DEBUG - 5, "trace")
+    logger = logging.getLogger("prepare_assignment")
+    tasks_logger = logging.getLogger("tasks")
+    set_logger_level(logger, args.debug)
+    set_logger_level(tasks_logger, args.verbosity, prefix="\t[TASK] ", debug_linenumbers=False)
+
+    # Get the prepare_assignment.yml file
+    file = __get_prepare_file(args.file)
+    logger.debug(f"Found prepare_assignment config file at: {file}")
+
+    # Load the file
+    loader = YAML(typ='safe')
+    path = Path(file)
+    yaml = loader.load(path)
+
+    # Check if we have to change working directory
+    dirname = os.path.dirname(path)
+    if dirname:
+        os.chdir(dirname)
+
+    # Execute all jobs
+    try:
+        validate_prepare(file, yaml)
+        mapping = prepare_tasks(file, yaml['jobs'])
+        prepare = Prepare.of(yaml)
+        run(prepare, mapping)
+    except PrepareTaskError as PE:
+        logger.error(PE.message)
+        if isinstance(PE.cause, PrepareError):
+            logger.error(PE.cause.message)
+        else:
+            logger.error(str(PE.cause))
+    except Exception as e:
+        logger.error(str(e))
+
+
 def main() -> None:
     """
     Parse 'prepare_assignment.y(a)ml' and execute all jobs
     """
     # Handle command line arguments
     parser = argparse.ArgumentParser()
-    add_commandline_arguments(parser)
+    __add_commandline_arguments(parser)
     args = parser.parse_args()
     args.func(args)
