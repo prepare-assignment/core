@@ -1,5 +1,5 @@
 name: Test project
-steps:
+jobs:
   prepare:
     - name: remove out
       uses: remove
@@ -19,4 +19,4 @@ steps:
         working-directory: "solution"
         verbosity: 5
     - name: Test a run command with substitution
-      run: echo '${{ steps.codestripper.outputs.stripped-files }}' > out.txt
+      run: echo '${{ tasks.codestripper.outputs.stripped-files }}' > out.txt

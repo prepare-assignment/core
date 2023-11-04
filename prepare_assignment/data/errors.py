@@ -18,7 +18,7 @@ class DependencyError(PrepareError):
         self.message = message
 
 
-class PrepareActionError(PrepareError):
+class PrepareTaskError(PrepareError):
 
     def __init__(self, message: str, cause: Exception):
         super().__init__(message)

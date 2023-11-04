@@ -12,33 +12,33 @@ from git import Repo
 from importlib_resources import files
 from virtualenv import cli_run  # type: ignore
 
-from prepare_assignment.core.validator import validate_action_definition, validate_action, load_yaml, \
+from prepare_assignment.core.validator import validate_task_definition, validate_tasks, load_yaml, \
     validate_default_values
-from prepare_assignment.data.action_definition import ActionDefinition, CompositeActionDefinition, \
-    PythonActionDefinition, ValidAction
-from prepare_assignment.data.action_properties import ActionProperties
+from prepare_assignment.data.task_definition import TaskDefinition, CompositeTaskDefinition, \
+    PythonTaskDefinition, ValidTask
+from prepare_assignment.data.task_properties import TaskProperties
 from prepare_assignment.data.constants import CONFIG
-from prepare_assignment.data.errors import DependencyError, ValidationError, PrepareActionError
+from prepare_assignment.data.errors import DependencyError, ValidationError, PrepareTaskError
 from prepare_assignment.utils.cache import get_cache_path
 
 # Set the cache path
 cache_path = get_cache_path()
 # Get the logger
 logger = logging.getLogger("prepare_assignment")
-# Load the actions template file
-template_file = files().joinpath('../schemas/actions.schema.json_template')
+# Load the task template file
+template_file = files().joinpath('../schemas/task.schema.json_template')
 template: str = template_file.read_text()
 
 
-def __repo_path(props: ActionProperties) -> Path:
+def __repo_path(props: TaskProperties) -> Path:
     return Path(os.path.join(cache_path, props.organization, props.name, props.version, "repo"))
 
 
-def __download_action(props: ActionProperties) -> Path:
+def __download_task(props: TaskProperties) -> Path:
     """
-    Download the action (using git clone)
+    Download the task (using git clone)
 
-    :param props: action properties
+    :param props: task properties
     :returns Path: the path where the repo is checked out
     """
     path: Path = __repo_path(props)
@@ -56,17 +56,17 @@ def __download_action(props: ActionProperties) -> Path:
     return path
 
 
-def __build_json_schema(props: ActionProperties, action: ActionDefinition) -> str:
-    logger.debug(f"Building json schema for '{action.id}'")
-    schema = template.replace("{{action-id}}", action.id)
-    schema = schema.replace("{{action-version}}", props.version)
+def __build_json_schema(props: TaskProperties, task: TaskDefinition) -> str:
+    logger.debug(f"Building json schema for '{task.id}'")
+    schema = template.replace("{{task-id}}", task.id)
+    schema = schema.replace("{{task-version}}", props.version)
     schema = schema.replace("{{organization}}", props.organization)
-    schema = schema.replace("{{action}}", str(props))
-    schema = schema.replace("{{action-name}}", action.name)
-    schema = schema.replace("{{action-description}}", action.description)
+    schema = schema.replace("{{task}}", str(props))
+    schema = schema.replace("{{task-name}}", task.name)
+    schema = schema.replace("{{task-description}}", task.description)
     required: List[str] = []
     properties: List[str] = []
-    for inp in action.inputs:
+    for inp in task.inputs:
         properties.append(inp.to_schema_definition())
         if inp.required:
             required.append(inp.name)
@@ -84,38 +84,38 @@ def __build_json_schema(props: ActionProperties, action: ActionDefinition) -> st
     return schema
 
 
-def __action_properties(action: str) -> ActionProperties:
-    parts = action.split("/")
+def __task_properties(task: str) -> TaskProperties:
+    parts = task.split("/")
     if len(parts) > 2:
-        raise AssertionError("Actions cannot have more than one slash")
+        raise AssertionError("Tasks cannot have more than one slash")
     elif len(parts) == 1:
         parts.insert(0, "prepare-assignment")
     organization: str = parts[0]
     name = parts[1]
     split = name.split("@")
     version: str = "latest"
-    action_name: str = name
+    task_name: str = name
     if len(split) > 2:
         raise AssertionError("Cannot have multiple '@' symbols in the name")
     elif len(split) == 2:
-        action_name = split[0]
+        task_name = split[0]
         version = split[1]
-    return ActionProperties(organization, action_name, version)
+    return TaskProperties(organization, task_name, version)
 
 
-def __action_dict_to_definition(action: Any, path: str) -> ActionDefinition:
-    if action["runs"]["using"] == "composite":
-        return CompositeActionDefinition.of(action, path)
+def __task_dict_to_definition(task: Any, path: str) -> TaskDefinition:
+    if task["runs"]["using"] == "composite":
+        return CompositeTaskDefinition.of(task, path)
     else:
-        return PythonActionDefinition.of(action, path)
+        return PythonTaskDefinition.of(task, path)
 
 
-def __action_install_dependencies(action_path: str) -> None:
+def __task_install_dependencies(task_path: str) -> None:
     if sys.platform == "win32":
-        venv_path = os.path.join(action_path, "venv", "scripts", "python.exe")
+        venv_path = os.path.join(task_path, "venv", "scripts", "python.exe")
     else:
-        venv_path = os.path.join(action_path, "venv", "bin", "python")
-    repo_path = os.path.join(action_path, "repo")
+        venv_path = os.path.join(task_path, "venv", "bin", "python")
+    repo_path = os.path.join(task_path, "repo")
     requirements_path = os.path.join(repo_path, "requirements.txt")
     pyproject_path = os.path.join(repo_path, "pyproject.toml")
     has_requirements = os.path.isfile(requirements_path)
@@ -144,138 +144,138 @@ def __action_install_dependencies(action_path: str) -> None:
         raise DependencyError(f"Unable to install dependencies for '{repo_path}', see '{file}' for more info")
 
 
-def __load_action_from_disk(action_name: str,
-                            action_path: str,
-                            props: ActionProperties,
-                            parsed: Dict[str, ValidAction]
-                            ) -> None:
-    logger.debug(f"Action '{action_name}' is already available, loading from disk")
+def __load_task_from_disk(task_name: str,
+                          task_path: str,
+                          props: TaskProperties,
+                          parsed: Dict[str, ValidTask]
+                          ) -> None:
+    logger.debug(f"Task '{task_name}' is already available, loading from disk")
     repo_path = __repo_path(props)
-    yaml_path = os.path.join(repo_path, "action.yml")
-    with open(os.path.join(action_path, f"{props.name}.schema.json"), "r") as handle:
+    yaml_path = os.path.join(repo_path, "task.yml")
+    with open(os.path.join(task_path, f"{props.name}.schema.json"), "r") as handle:
         json_schema = json.load(handle)
-    action_yaml = load_yaml(yaml_path)
-    action = __action_dict_to_definition(action_yaml, action_path)
-    parsed[action_name] = {"schema": json_schema, "action": action}
-    if isinstance(action, CompositeActionDefinition):
-        for subaction in action.steps:
-            subaction_name = subaction.get("uses", None)
-            if subaction_name is None:
+    task_yaml = load_yaml(yaml_path)
+    task = __task_dict_to_definition(task_yaml, task_path)
+    parsed[task_name] = {"schema": json_schema, "task": task}
+    if isinstance(task, CompositeTaskDefinition):
+        for sub_task in task.tasks:
+            sub_task_name = sub_task.get("uses", None)
+            if sub_task_name is None:
                 continue
-            subprops = __action_properties(subaction_name)
-            action_path = os.path.join(cache_path, subprops.organization, subprops.name, subprops.version)
-            __load_action_from_disk(subaction_name, action_path, subprops, parsed)
+            sub_props = __task_properties(sub_task_name)
+            task_path = os.path.join(cache_path, sub_props.organization, sub_props.name, sub_props.version)
+            __load_task_from_disk(sub_task_name, task_path, sub_props, parsed)
 
 
-def __prepare_action(props: ActionProperties, action_path: str, repo_path: Path) -> ValidAction:
+def __prepare_task(props: TaskProperties, task_path: str, repo_path: Path) -> ValidTask:
     try:
-        # Download the action (clone the repository)
-        __download_action(props)
-        # Validate that the action.yml is valid
-        yaml_path = os.path.join(repo_path, "action.yml")
-        action_yaml = validate_action_definition(yaml_path)
-        action: ActionDefinition = __action_dict_to_definition(action_yaml, action_path)
-        validate_default_values(action)
-        if isinstance(action, PythonActionDefinition):
-            main_path = os.path.join(repo_path, Path(action.main))  # type: ignore
+        # Download the task (clone the repository)
+        __download_task(props)
+        # Validate that the task.yml is valid
+        yaml_path = os.path.join(repo_path, "task.yml")
+        task_yaml = validate_task_definition(yaml_path)
+        task: TaskDefinition = __task_dict_to_definition(task_yaml, task_path)
+        validate_default_values(task)
+        if isinstance(task, PythonTaskDefinition):
+            main_path = os.path.join(repo_path, Path(task.main))  # type: ignore
             if not os.path.isfile(main_path):
-                error_msg = f"Main file '{action.main}' does not exist for action '{action.name}'"  # type: ignore
+                error_msg = f"Main file '{task.main}' does not exist for task '{task.name}'"  # type: ignore
                 raise ValidationError(error_msg)
-            # Create a virtualenv for this action
-            cli_run([os.path.join(action_path, "venv")])
+            # Create a virtualenv for this task
+            cli_run([os.path.join(task_path, "venv")])
             # Install dependencies
-            __action_install_dependencies(action_path)
-        # Now we can build a schema for this action
-        schema = __build_json_schema(props, action)
+            __task_install_dependencies(task_path)
+        # Now we can build a schema for this task
+        schema = __build_json_schema(props, task)
         json_schema = json.loads(schema)
-        with open(os.path.join(action_path, f"{props.name}.schema.json"), 'w') as handle:
+        with open(os.path.join(task_path, f"{props.name}.schema.json"), 'w') as handle:
             handle.write(schema)
-        return {"schema": json_schema, "action": action}
+        return {"schema": json_schema, "task": task}
     except Exception as e:
         # If something went wrong in the previous steps,
-        # that means the action is not valid and should be removed
-        shutil.rmtree(action_path)
-        # We need to raise an exception, because if it was part of a composite action,
-        # then that action is also not valid
-        raise PrepareActionError(f"Unable to prepare action '{str(props)}'", e)
+        # that means the task is not valid and should be removed
+        shutil.rmtree(task_path)
+        # We need to raise an exception, because if it was part of a composite task,
+        # then that task is also not valid
+        raise PrepareTaskError(f"Unable to prepare task '{str(props)}'", e)
 
 
-def __prepare_actions(file: str, actions: List[Any], parsed: Optional[Dict[str, ValidAction]] = None) \
-        -> Dict[str, ValidAction]:
+def __prepare_tasks(file: str, tasks: List[Any], parsed: Optional[Dict[str, ValidTask]] = None) \
+        -> Dict[str, ValidTask]:
     # Unfortunately we cannot do this as a default value, see:
     # https://docs.python-guide.org/writing/gotchas/#mutable-default-arguments
     if parsed is None:
         parsed = {}
-    if len(actions) == 0:
-        logger.debug("All (sub-)actions prepared")
+    if len(tasks) == 0:
+        logger.debug("All (sub-)tasks prepared")
         return parsed
 
-    action_def = actions.pop()
-    act: str = action_def["uses"]
-    # Check if we have already loaded the action
-    if parsed.get(act, None) is None:
-        logger.debug(f"Action '{act}' has not been loaded in this run")
-        props = __action_properties(act)
-        # Check if action (therefore the path) has already been downloaded in previous run
-        action_path = os.path.join(cache_path, props.organization, props.name, props.version)
+    task_def = tasks.pop()
+    uses: str = task_def["uses"]
+    # Check if we have already loaded the task
+    if parsed.get(uses, None) is None:
+        logger.debug(f"Task '{uses}' has not been loaded in this run")
+        props = __task_properties(uses)
+        # Check if task (therefore the path) has already been downloaded in previous run
+        task_path = os.path.join(cache_path, props.organization, props.name, props.version)
         repo_path = __repo_path(props)
-        if os.path.isdir(action_path):
-            __load_action_from_disk(act, action_path, props, parsed)
+        if os.path.isdir(task_path):
+            __load_task_from_disk(uses, task_path, props, parsed)
         else:
-            logger.debug(f"Action '{act}' is not available on this system")
-            valid_action = __prepare_action(props, action_path, repo_path)
-            # Check if it is a composite action, in that case we might need to retrieve more actions
-            action = valid_action["action"]
-            if isinstance(action, CompositeActionDefinition):
-                logger.debug(f"Action '{act}' is a composite action, preparing sub-actions")
-                all_actions: List[Any] = []
-                for step in action.steps:
+            logger.debug(f"Task '{uses}' is not available on this system")
+            valid_task = __prepare_task(props, task_path, repo_path)
+            # Check if it is a composite task, in that case we might need to retrieve more tasks
+            task = valid_task["task"]
+            if isinstance(task, CompositeTaskDefinition):
+                logger.debug(f"Task '{uses}' is a composite task, preparing sub-tasks")
+                all_tasks: List[Any] = []
+                for step in task.tasks:
                     name = step.get("uses", None)
                     if name is not None:
-                        all_actions.append(step)
+                        all_tasks.append(step)
                 try:
-                    parsed = __prepare_actions(str(repo_path), all_actions, parsed)
-                except PrepareActionError as PE:
-                    # If any of the subactions this composite action depend on fails,
-                    # we have to remove this action as well
-                    shutil.rmtree(action_path)
+                    parsed = __prepare_tasks(str(repo_path), all_tasks, parsed)
+                except PrepareTaskError as PE:
+                    # If any of the subtasks this composite task depend on fails,
+                    # we have to remove this task as well
+                    shutil.rmtree(task_path)
                     raise PE
                 except Exception as e:
-                    shutil.rmtree(action_path)
-                    raise PrepareActionError(f"Unable to prepare action '{act}'", e)
-            parsed[act] = valid_action
-            if action_def.get("with", None) is None:
-                action_def["with"] = {}
+                    shutil.rmtree(task_path)
+                    raise PrepareTaskError(f"Unable to prepare task '{uses}'", e)
+            parsed[uses] = valid_task
+            if task_def.get("with", None) is None:
+                task_def["with"] = {}
     else:
-        logger.debug(f"Action '{act}' has already been loaded in this run")
-    validate_action(file, action_def, parsed[act]["schema"])
-    return __prepare_actions(file, actions, parsed)
+        logger.debug(f"Task '{uses}' has already been loaded in this run")
+    validate_tasks(file, task_def, parsed[uses]["schema"])
+    return __prepare_tasks(file, tasks, parsed)
 
 
-def prepare_actions(prepare_file: str, steps: Dict[str, Any]) -> Dict[str, ActionDefinition]:
+def prepare_tasks(prepare_file: str, jobs: Dict[str, Any]) -> Dict[str, TaskDefinition]:
     """
-    Make sure that the actions are available for the runner.
+    Make sure that the tasks are available for the runner.
 
-    If an action is not available:
+    If a task is not available:
     1. Clone the repository
     2. Checkout the correct version
     3. Generate json schema for validation
-    4. Validate action
+    4. Validate task
 
     :param prepare_file the name/path to the prepare file
-    :param steps: The actions of the prepare file
+    :param jobs: The jobs of the prepare file
     :return: None
     """
-    logger.debug("========== Preparing actions")
-    all_actions: List[Any] = []
+    logger.debug("========== Preparing tasks")
+    all_tasks: List[Any] = []
     # DON'T FORGET TO REMOVE, ONLY FOR DEVELOPMENT
     # shutil.rmtree(cache_path, ignore_errors=True)
-    # Iterate through all the actions to make sure that they are available
-    for step, actions in steps.items():
-        for action in actions:
-            # If the action is a run command, we don't need to do anything
-            if action.get("uses", None) is not None:
-                all_actions.append(action)
-    mapping = __prepare_actions(prepare_file, all_actions)
-    logger.debug("✓ All actions downloaded and valid")
-    return {k: v["action"] for k, v in mapping.items()}
+    # Iterate through all the tasks to make sure that they are available
+    for step, tasks in jobs.items():
+        for task in tasks:
+            # If the task is a run command, we don't need to do anything
+            if task.get("uses", None) is not None:
+                all_tasks.append(task)
+    mapping = __prepare_tasks(prepare_file, all_tasks)
+    logger.debug("✓ All tasks downloaded and valid")
+    return {k: v["task"] for k, v in mapping.items()}

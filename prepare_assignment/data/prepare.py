@@ -7,11 +7,11 @@ from dataclasses import dataclass
 from functools import cached_property
 from typing import Dict, Optional, Union, Any, List
 
-ActionInput = Union[str, float, int, list]
+TaskInput = Union[str, float, int, list]
 
 
 @dataclass
-class Action(ABC):
+class Task(ABC):
     name: str
     id: Optional[str]
 
@@ -21,8 +21,8 @@ class Action(ABC):
         ...
 
     @staticmethod
-    def of(yaml: Dict[str, Any]) -> Action:
-        return RunAction.of(yaml) if "run" in yaml else UsesAction.of(yaml)
+    def of(yaml: Dict[str, Any]) -> Task:
+        return RunTask.of(yaml) if "run" in yaml else UsesTask.of(yaml)
 
     @cached_property
     def key(self) -> str:
@@ -33,11 +33,11 @@ class Action(ABC):
 
 
 @dataclass
-class RunAction(Action):
+class RunTask(Task):
     run: str
 
     @classmethod
-    def of(cls, yaml: Dict[str, Any]) -> RunAction:
+    def of(cls, yaml: Dict[str, Any]) -> RunTask:
         return cls(
             name=yaml["name"],
             run=yaml["run"],
@@ -50,12 +50,12 @@ class RunAction(Action):
 
 
 @dataclass
-class UsesAction(Action):
+class UsesTask(Task):
     uses: str
-    with_: Dict[str, ActionInput]
+    with_: Dict[str, TaskInput]
 
     @classmethod
-    def of(cls, yaml: Dict[str, Any]) -> UsesAction:
+    def of(cls, yaml: Dict[str, Any]) -> UsesTask:
         return cls(
             name=yaml["name"],
             uses=yaml["uses"],
@@ -71,13 +71,13 @@ class UsesAction(Action):
 @dataclass
 class Prepare:
     name: str
-    steps: Dict[str, List[Action]]
+    jobs: Dict[str, List[Task]]
 
     @classmethod
     def of(cls, yaml: Dict[str, Any]) -> Prepare:
-        steps_dict = yaml.get("steps", {})
-        steps = {key: [Action.of(value) for value in values] for key, values in steps_dict.items()}
+        jobs_dict = yaml.get("jobs", {})
+        jobs = {key: [Task.of(value) for value in values] for key, values in jobs_dict.items()}
         return cls(
             name=yaml["name"],
-            steps=steps
+            jobs=jobs
         )

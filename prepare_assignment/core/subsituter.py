@@ -3,9 +3,9 @@ import logging
 from typing import Dict, Any
 
 from prepare_assignment.data.constants import HAS_SUB_REGEX, SUB_REGEX
-from prepare_assignment.data.step_environment import StepEnvironment
+from prepare_assignment.data.job_environment import JobEnvironment
 
-actions_logger = logging.getLogger("actions")
+tasks_logger = logging.getLogger("tasks")
 
 
 def __to_string(value: Any) -> str:
@@ -28,11 +28,11 @@ def __to_string(value: Any) -> str:
     return json.dumps(value)
 
 
-def __substitute(value: str, environment: StepEnvironment) -> str:
+def __substitute(value: str, environment: JobEnvironment) -> str:
     """
     Substitute commands in a string with the matching values from the environment.
     ${{ inputs.<name> }} -> replace with the matching input
-    ${{ steps.<step>.outputs.<name>}} -> replace with the matching output of the correct step
+    ${{ tasks.<step>.outputs.<name>}} -> replace with the matching output of the correct step
 
     :param value: the string to substitute on
     :param environment: the environment to take the values from
@@ -55,7 +55,7 @@ def __substitute(value: str, environment: StepEnvironment) -> str:
                 output = sub.group("output")
                 substitution = environment.outputs.get(step, {}).get(output, None)
             if substitution is None:
-                actions_logger.warning(f"Cannot substitute '{sub.string}'")
+                tasks_logger.warning(f"Cannot substitute '{sub.string}'")
                 continue
             # TODO: check the type
             replacement["sub"] = __to_string(substitution)
@@ -76,7 +76,7 @@ def __substitute(value: str, environment: StepEnvironment) -> str:
     return result
 
 
-def substitute_all(values: Dict[str, Any], environment: StepEnvironment) -> None:
+def substitute_all(values: Dict[str, Any], environment: JobEnvironment) -> None:
     """
     Substitute (in-place) all commands with the matching values.
 

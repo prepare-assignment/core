@@ -7,11 +7,11 @@ from typing import Optional
 from prepare_toolbox.file import get_matching_files
 from ruamel.yaml import YAML
 
-from prepare_assignment.core.preparer import prepare_actions
+from prepare_assignment.core.preparer import prepare_tasks
 from prepare_assignment.core.runner import run
 from prepare_assignment.core.validator import validate_prepare
 from prepare_assignment.data.constants import CONFIG
-from prepare_assignment.data.errors import ValidationError, DependencyError, PrepareActionError, PrepareError
+from prepare_assignment.data.errors import ValidationError, DependencyError, PrepareTaskError, PrepareError
 from prepare_assignment.data.prepare import Prepare
 from prepare_assignment.utils import set_logger_level
 from prepare_assignment.utils.logger import add_logging_level
@@ -26,7 +26,7 @@ def add_commandline_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("-v",
                         "--verbosity",
                         action="count",
-                        help="increase action output verbosity",
+                        help="increase task output verbosity",
                         default=0)
     parser.add_argument("-d",
                         "--debug",
@@ -69,7 +69,7 @@ def __get_prepare_file(file: Optional[str]) -> str:
 
 def main() -> None:
     """
-    Parse 'prepare_assignment.y(a)ml' and execute all steps
+    Parse 'prepare_assignment.y(a)ml' and execute all jobs
     """
     # Handle command line arguments
     parser = argparse.ArgumentParser()
@@ -82,9 +82,9 @@ def main() -> None:
     # Set the logger
     add_logging_level("TRACE", logging.DEBUG - 5, "trace")
     logger = logging.getLogger("prepare_assignment")
-    actions_logger = logging.getLogger("actions")
+    tasks_logger = logging.getLogger("tasks")
     set_logger_level(logger, args.debug)
-    set_logger_level(actions_logger, args.verbosity, prefix="\t[ACT] ", debug_linenumbers=False)
+    set_logger_level(tasks_logger, args.verbosity, prefix="\t[TASK] ", debug_linenumbers=False)
 
     # Get the prepare_assignment.yml file
     file = __get_prepare_file(args.file)
@@ -95,14 +95,14 @@ def main() -> None:
     path = Path(file)
     yaml = loader.load(path)
 
-    # Execute all steps
+    # Execute all jobs
     os.chdir(os.path.dirname(path))
     try:
         validate_prepare(file, yaml)
-        mapping = prepare_actions(file, yaml['steps'])
+        mapping = prepare_tasks(file, yaml['jobs'])
         prepare = Prepare.of(yaml)
         run(prepare, mapping)
-    except PrepareActionError as PE:
+    except PrepareTaskError as PE:
         logger.error(PE.message)
         if isinstance(PE.cause, PrepareError):
             logger.error(PE.cause.message)

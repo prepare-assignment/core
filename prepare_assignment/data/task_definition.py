@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional, List, TypedDict
 
 
 @dataclass
-class ActionInputDefinition:
+class TaskInputDefinition:
     name: str
     description: str
     required: bool
@@ -16,7 +16,7 @@ class ActionInputDefinition:
     items: Optional[str] = None
 
     @classmethod
-    def of(cls, name: str, yaml: Dict[str, Any]) -> ActionInputDefinition:
+    def of(cls, name: str, yaml: Dict[str, Any]) -> TaskInputDefinition:
         default = yaml.get("default", None)
         items = yaml.get("items", None)
         return cls(
@@ -40,13 +40,13 @@ class ActionInputDefinition:
 
 
 @dataclass
-class ActionOutputDefinition:
+class TaskOutputDefinition:
     description: str
     type: str
     items: Optional[str]
 
     @classmethod
-    def of(cls, yaml: Dict[str, Any]) -> ActionOutputDefinition:
+    def of(cls, yaml: Dict[str, Any]) -> TaskOutputDefinition:
         items = yaml.get("items", None)
         return cls(
             description=yaml["description"],
@@ -56,12 +56,12 @@ class ActionOutputDefinition:
 
 
 @dataclass
-class ActionDefinition(ABC):
+class TaskDefinition(ABC):
     id: str
     name: str
     description: str
-    inputs: List[ActionInputDefinition]
-    outputs: Dict[str, ActionOutputDefinition]
+    inputs: List[TaskInputDefinition]
+    outputs: Dict[str, TaskOutputDefinition]
     path: str
 
     @property
@@ -70,28 +70,28 @@ class ActionDefinition(ABC):
         ...
 
     @staticmethod
-    def _dict_to_inputs(dictionary: Dict[str, Any]) -> List[ActionInputDefinition]:
-        return [ActionInputDefinition.of(key, value) for key, value in dictionary.items()]
+    def _dict_to_inputs(dictionary: Dict[str, Any]) -> List[TaskInputDefinition]:
+        return [TaskInputDefinition.of(key, value) for key, value in dictionary.items()]
 
     @staticmethod
-    def _yaml_to_outputs(yaml: Dict[str, Any]) -> Dict[str, ActionOutputDefinition]:
-        return {key: ActionOutputDefinition.of(value) for key, value in yaml.items()}
+    def _yaml_to_outputs(yaml: Dict[str, Any]) -> Dict[str, TaskOutputDefinition]:
+        return {key: TaskOutputDefinition.of(value) for key, value in yaml.items()}
 
 
 @dataclass
-class PythonActionDefinition(ActionDefinition):
+class PythonTaskDefinition(TaskDefinition):
     main: str
 
     @classmethod
-    def of(cls, yaml: Dict[str, Any], path: str) -> PythonActionDefinition:
+    def of(cls, yaml: Dict[str, Any], path: str) -> PythonTaskDefinition:
         inputs = yaml.get("inputs", {})
         outputs = yaml.get("outputs", {})
         return cls(
             id=yaml["id"],
             name=yaml["name"],
             description=yaml["description"],
-            inputs=ActionDefinition._dict_to_inputs(inputs),
-            outputs=ActionDefinition._yaml_to_outputs(outputs),
+            inputs=TaskDefinition._dict_to_inputs(inputs),
+            outputs=TaskDefinition._yaml_to_outputs(outputs),
             main=yaml["runs"]["main"],
             path=path
         )
@@ -102,20 +102,20 @@ class PythonActionDefinition(ActionDefinition):
 
 
 @dataclass
-class CompositeActionDefinition(ActionDefinition):
-    steps: List[Any]
+class CompositeTaskDefinition(TaskDefinition):
+    tasks: List[Any]
 
     @classmethod
-    def of(cls, yaml: Dict[str, Any], path: str) -> CompositeActionDefinition:
+    def of(cls, yaml: Dict[str, Any], path: str) -> CompositeTaskDefinition:
         inputs = yaml.get("inputs", {})
         outputs = yaml.get("outputs", {})
         return cls(
             id=yaml["id"],
             name=yaml["name"],
             description=yaml["description"],
-            steps=yaml["runs"]["steps"],
-            inputs=ActionDefinition._dict_to_inputs(inputs),
-            outputs=ActionDefinition._yaml_to_outputs(outputs),
+            tasks=yaml["runs"]["tasks"],
+            inputs=TaskDefinition._dict_to_inputs(inputs),
+            outputs=TaskDefinition._yaml_to_outputs(outputs),
             path=path
         )
 
@@ -124,6 +124,6 @@ class CompositeActionDefinition(ActionDefinition):
         return True
 
 
-class ValidAction(TypedDict):
+class ValidTask(TypedDict):
     schema: Any
-    action: ActionDefinition
+    task: TaskDefinition
