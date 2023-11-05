@@ -3,6 +3,8 @@ import sys
 
 from pathlib import Path
 
+from prepare_assignment.data.constants import TASKS_PATH
+
 
 def get_cache_path() -> Path:
     """
@@ -21,3 +23,8 @@ def get_cache_path() -> Path:
         lad = f"{os.environ.get('LOCALAPPDATA')}"
         return Path(os.path.join(lad, "prepare", "cache"))
     raise AssertionError("Unsupported OS")
+
+
+def get_tasks_path() -> Path:
+    cache_path = get_cache_path()
+    return Path(os.path.join(cache_path, TASKS_PATH))

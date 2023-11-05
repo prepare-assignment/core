@@ -8,7 +8,7 @@ import pytest
 from _pytest.logging import LogCaptureFixture
 from pytest_mock import MockerFixture
 
-from prepare_assignment.core.cli import main
+from prepare_assignment.cli.main import app
 
 test_project_dir = os.path.join(Path(__file__).parent.absolute())
 
@@ -21,7 +21,8 @@ def test_main(monkeypatch: pytest.MonkeyPatch, caplog: LogCaptureFixture, mocker
     with tempfile.TemporaryDirectory() as tmpdir:         
         mocker.patch("prepare_assignment.core.preparer.cache_path", tmpdir)
         with patch.object(sys, 'argv', args):
-            main()
+            with pytest.raises(SystemExit):
+                app()
     assert os.path.isdir("out")
     with open('out.txt', 'r') as handle:
         text = handle.read()

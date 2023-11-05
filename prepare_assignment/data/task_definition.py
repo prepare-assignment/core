@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, List, TypedDict
@@ -38,6 +39,19 @@ class TaskInputDefinition:
         joined = ",\n  ".join(properties)
         return f'"{self.name}": {{\n  {joined}\n}}'
 
+    def __str__(self) -> str:
+        output = [
+            f"name: {self.name}",
+            f"description: {self.description}",
+            f"required: {self.required}",
+            f"type: {self.type}"
+        ]
+        if self.items is not None:
+            output.append(f"items: {self.items}")
+        if self.default is not None:
+            output.append(f"default: {self.default}")
+        return os.linesep.join(output)
+
 
 @dataclass
 class TaskOutputDefinition:
@@ -53,6 +67,15 @@ class TaskOutputDefinition:
             type=yaml["type"],
             items=items
         )
+
+    def __str__(self) -> str:
+        output = [
+            f"description: {self.description}",
+            f"type: {self.type}"
+        ]
+        if self.items is not None:
+            output.append(f"items: {self.items}")
+        return os.linesep.join(output)
 
 
 @dataclass
@@ -76,6 +99,30 @@ class TaskDefinition(ABC):
     @staticmethod
     def _yaml_to_outputs(yaml: Dict[str, Any]) -> Dict[str, TaskOutputDefinition]:
         return {key: TaskOutputDefinition.of(value) for key, value in yaml.items()}
+
+    @staticmethod
+    def of(yaml: Dict[str, Any], path: str) -> TaskDefinition:
+        if yaml["runs"]["using"] == "composite":
+            return CompositeTaskDefinition.of(yaml, path)
+        else:
+            return PythonTaskDefinition.of(yaml, path)
+
+    def __str__(self) -> str:
+        output = [f"id: {self.id}", f"name: {self.name}", f"description: {self.description}"]
+        if len(self.inputs) > 0:
+            inputs = ["inputs:"]
+            for inp in self.inputs:
+                input_string = "\n    ".join(str(inp).split(os.linesep))
+                inputs.append(f"  - {input_string}")
+            output.append(os.linesep.join(inputs))
+        if len(self.outputs) > 0:
+            outputs = ["outputs:"]
+            for key, definition in self.outputs.items():
+                output_string = f"{key}{os.linesep}    "
+                output_string += "\n    ".join(str(definition).split(os.linesep))
+                outputs.append(f"  {str(output_string)}")
+            output.append(os.linesep.join(outputs))
+        return os.linesep.join(output)
 
 
 @dataclass

@@ -6,7 +6,7 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional, TypedDict
+from typing import Dict, Any, List, Optional
 
 from git import Repo
 from importlib_resources import files
@@ -14,11 +14,11 @@ from virtualenv import cli_run  # type: ignore
 
 from prepare_assignment.core.validator import validate_task_definition, validate_tasks, load_yaml, \
     validate_default_values
+from prepare_assignment.data.constants import CONFIG, TASKS_PATH
+from prepare_assignment.data.errors import DependencyError, ValidationError, PrepareTaskError
 from prepare_assignment.data.task_definition import TaskDefinition, CompositeTaskDefinition, \
     PythonTaskDefinition, ValidTask
 from prepare_assignment.data.task_properties import TaskProperties
-from prepare_assignment.data.constants import CONFIG
-from prepare_assignment.data.errors import DependencyError, ValidationError, PrepareTaskError
 from prepare_assignment.utils.cache import get_cache_path
 
 # Set the cache path
@@ -31,7 +31,7 @@ template: str = template_file.read_text()
 
 
 def __repo_path(props: TaskProperties) -> Path:
-    return Path(os.path.join(cache_path, props.organization, props.name, props.version, "repo"))
+    return Path(os.path.join(cache_path, TASKS_PATH, props.organization, props.name, props.version, "repo"))
 
 
 def __download_task(props: TaskProperties) -> Path:
@@ -84,32 +84,6 @@ def __build_json_schema(props: TaskProperties, task: TaskDefinition) -> str:
     return schema
 
 
-def __task_properties(task: str) -> TaskProperties:
-    parts = task.split("/")
-    if len(parts) > 2:
-        raise AssertionError("Tasks cannot have more than one slash")
-    elif len(parts) == 1:
-        parts.insert(0, "prepare-assignment")
-    organization: str = parts[0]
-    name = parts[1]
-    split = name.split("@")
-    version: str = "latest"
-    task_name: str = name
-    if len(split) > 2:
-        raise AssertionError("Cannot have multiple '@' symbols in the name")
-    elif len(split) == 2:
-        task_name = split[0]
-        version = split[1]
-    return TaskProperties(organization, task_name, version)
-
-
-def __task_dict_to_definition(task: Any, path: str) -> TaskDefinition:
-    if task["runs"]["using"] == "composite":
-        return CompositeTaskDefinition.of(task, path)
-    else:
-        return PythonTaskDefinition.of(task, path)
-
-
 def __task_install_dependencies(task_path: str) -> None:
     if sys.platform == "win32":
         venv_path = os.path.join(task_path, "venv", "scripts", "python.exe")
@@ -155,15 +129,15 @@ def __load_task_from_disk(task_name: str,
     with open(os.path.join(task_path, f"{props.name}.schema.json"), "r") as handle:
         json_schema = json.load(handle)
     task_yaml = load_yaml(yaml_path)
-    task = __task_dict_to_definition(task_yaml, task_path)
+    task = TaskDefinition.of(task_yaml, task_path)
     parsed[task_name] = {"schema": json_schema, "task": task}
     if isinstance(task, CompositeTaskDefinition):
         for sub_task in task.tasks:
             sub_task_name = sub_task.get("uses", None)
             if sub_task_name is None:
                 continue
-            sub_props = __task_properties(sub_task_name)
-            task_path = os.path.join(cache_path, sub_props.organization, sub_props.name, sub_props.version)
+            sub_props = TaskProperties.of(sub_task_name)
+            task_path = os.path.join(cache_path, TASKS_PATH, sub_props.organization, sub_props.name, sub_props.version)
             __load_task_from_disk(sub_task_name, task_path, sub_props, parsed)
 
 
@@ -174,7 +148,7 @@ def __prepare_task(props: TaskProperties, task_path: str, repo_path: Path) -> Va
         # Validate that the task.yml is valid
         yaml_path = os.path.join(repo_path, "task.yml")
         task_yaml = validate_task_definition(yaml_path)
-        task: TaskDefinition = __task_dict_to_definition(task_yaml, task_path)
+        task: TaskDefinition = TaskDefinition.of(task_yaml, task_path)
         validate_default_values(task)
         if isinstance(task, PythonTaskDefinition):
             main_path = os.path.join(repo_path, Path(task.main))  # type: ignore
@@ -215,9 +189,9 @@ def __prepare_tasks(file: str, tasks: List[Any], parsed: Optional[Dict[str, Vali
     # Check if we have already loaded the task
     if parsed.get(uses, None) is None:
         logger.debug(f"Task '{uses}' has not been loaded in this run")
-        props = __task_properties(uses)
+        props = TaskProperties.of(uses)
         # Check if task (therefore the path) has already been downloaded in previous run
-        task_path = os.path.join(cache_path, props.organization, props.name, props.version)
+        task_path = os.path.join(cache_path, TASKS_PATH, props.organization, props.name, props.version)
         repo_path = __repo_path(props)
         if os.path.isdir(task_path):
             __load_task_from_disk(uses, task_path, props, parsed)
@@ -268,8 +242,6 @@ def prepare_tasks(prepare_file: str, jobs: Dict[str, Any]) -> Dict[str, TaskDefi
     """
     logger.debug("========== Preparing tasks")
     all_tasks: List[Any] = []
-    # DON'T FORGET TO REMOVE, ONLY FOR DEVELOPMENT
-    # shutil.rmtree(cache_path, ignore_errors=True)
     # Iterate through all the tasks to make sure that they are available
     for step, tasks in jobs.items():
         for task in tasks:
