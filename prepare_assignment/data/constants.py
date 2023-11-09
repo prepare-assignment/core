@@ -35,9 +35,6 @@ CONFIG: Config = Config()
 
 BASH_EXECUTABLE: Final[str] = get_bash_path()
 
-TASKS_PATH: Final[str] = "tasks"
-
-
 YAML_LOADER = YAML(typ='safe')
 YAML_LOADER.brace_single_entry_mapping_in_flow_sequence = False
 YAML_LOADER.default_flow_style = True

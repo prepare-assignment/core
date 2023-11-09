@@ -12,17 +12,18 @@ from git import Repo
 from importlib_resources import files
 from virtualenv import cli_run  # type: ignore
 
+from prepare_assignment.data.constants import CONFIG
 from prepare_assignment.core.validator import validate_task_definition, validate_tasks, load_yaml, \
     validate_default_values
-from prepare_assignment.data.constants import CONFIG, TASKS_PATH
 from prepare_assignment.data.errors import DependencyError, ValidationError, PrepareTaskError
 from prepare_assignment.data.task_definition import TaskDefinition, CompositeTaskDefinition, \
     PythonTaskDefinition, ValidTask
 from prepare_assignment.data.task_properties import TaskProperties
-from prepare_assignment.utils.cache import get_cache_path
+from prepare_assignment.utils.cache import get_cache_path, get_tasks_path
 
 # Set the cache path
 cache_path = get_cache_path()
+tasks_path = get_tasks_path()
 # Get the logger
 logger = logging.getLogger("prepare_assignment")
 # Load the task template file
@@ -31,7 +32,7 @@ template: str = template_file.read_text()
 
 
 def __repo_path(props: TaskProperties) -> Path:
-    return Path(os.path.join(cache_path, TASKS_PATH, props.organization, props.name, props.version, "repo"))
+    return Path(os.path.join(tasks_path, props.organization, props.name, props.version, "repo"))
 
 
 def __download_task(props: TaskProperties) -> Path:
@@ -137,7 +138,7 @@ def __load_task_from_disk(task_name: str,
             if sub_task_name is None:
                 continue
             sub_props = TaskProperties.of(sub_task_name)
-            task_path = os.path.join(cache_path, TASKS_PATH, sub_props.organization, sub_props.name, sub_props.version)
+            task_path = os.path.join(tasks_path, sub_props.organization, sub_props.name, sub_props.version)
             __load_task_from_disk(sub_task_name, task_path, sub_props, parsed)
 
 
@@ -174,8 +175,8 @@ def __prepare_task(props: TaskProperties, task_path: str, repo_path: Path) -> Va
         raise PrepareTaskError(f"Unable to prepare task '{str(props)}'", e)
 
 
-def __prepare_tasks(file: str, tasks: List[Any], parsed: Optional[Dict[str, ValidTask]] = None) \
-        -> Dict[str, ValidTask]:
+def __prepare_tasks(tasks: List[Any], parsed: Optional[Dict[str, ValidTask]] = None, *,
+                    file: Optional[str] = None, check_inputs: bool = True) -> Dict[str, ValidTask]:
     # Unfortunately we cannot do this as a default value, see:
     # https://docs.python-guide.org/writing/gotchas/#mutable-default-arguments
     if parsed is None:
@@ -191,7 +192,7 @@ def __prepare_tasks(file: str, tasks: List[Any], parsed: Optional[Dict[str, Vali
         logger.debug(f"Task '{uses}' has not been loaded in this run")
         props = TaskProperties.of(uses)
         # Check if task (therefore the path) has already been downloaded in previous run
-        task_path = os.path.join(cache_path, TASKS_PATH, props.organization, props.name, props.version)
+        task_path = os.path.join(tasks_path, props.organization, props.name, props.version)
         repo_path = __repo_path(props)
         if os.path.isdir(task_path):
             __load_task_from_disk(uses, task_path, props, parsed)
@@ -208,7 +209,7 @@ def __prepare_tasks(file: str, tasks: List[Any], parsed: Optional[Dict[str, Vali
                     if name is not None:
                         all_tasks.append(step)
                 try:
-                    parsed = __prepare_tasks(str(repo_path), all_tasks, parsed)
+                    parsed = __prepare_tasks(all_tasks, parsed, file=str(repo_path))
                 except PrepareTaskError as PE:
                     # If any of the subtasks this composite task depend on fails,
                     # we have to remove this task as well
@@ -222,8 +223,9 @@ def __prepare_tasks(file: str, tasks: List[Any], parsed: Optional[Dict[str, Vali
                 task_def["with"] = {}
     else:
         logger.debug(f"Task '{uses}' has already been loaded in this run")
-    validate_tasks(file, task_def, parsed[uses]["schema"])
-    return __prepare_tasks(file, tasks, parsed)
+    if check_inputs:
+        validate_tasks(file, task_def, parsed[uses]["schema"])
+    return __prepare_tasks(tasks, parsed, file=file)
 
 
 def prepare_tasks(prepare_file: str, jobs: Dict[str, Any]) -> Dict[str, TaskDefinition]:
@@ -248,6 +250,6 @@ def prepare_tasks(prepare_file: str, jobs: Dict[str, Any]) -> Dict[str, TaskDefi
             # If the task is a run command, we don't need to do anything
             if task.get("uses", None) is not None:
                 all_tasks.append(task)
-    mapping = __prepare_tasks(prepare_file, all_tasks)
+    mapping = __prepare_tasks(all_tasks, file=prepare_file)
     logger.debug("✓ All tasks downloaded and valid")
     return {k: v["task"] for k, v in mapping.items()}

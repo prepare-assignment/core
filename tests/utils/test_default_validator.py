@@ -1,7 +1,8 @@
 import pytest
 
-from prepare_assignment.utils import DefaultValidatingValidator
 from jsonschema.exceptions import ValidationError
+
+from prepare_assignment.utils.default_validator import DefaultValidatingValidator
 
 
 def test_default_value() -> None:

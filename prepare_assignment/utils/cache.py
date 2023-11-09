@@ -2,8 +2,9 @@ import os
 import sys
 
 from pathlib import Path
+from typing import Final
 
-from prepare_assignment.data.constants import TASKS_PATH
+TASKS_PATH: Final[str] = "tasks"
 
 
 def get_cache_path() -> Path:

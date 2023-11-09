@@ -11,8 +11,9 @@ from pytest_mock import MockerFixture
 
 from prepare_assignment.core.preparer import prepare_tasks, __task_install_dependencies
 from prepare_assignment.data.errors import DependencyError
-from prepare_assignment.utils import get_cache_path
 from virtualenv import cli_run  # type: ignore
+
+from prepare_assignment.utils.cache import get_cache_path
 
 PREPARE: Final[Dict[str, Any]] = {
     'prepare': [
@@ -36,6 +37,8 @@ def set_cache(class_mocker) -> None:
     class_mocker.patch("prepare_assignment.core.preparer.CONFIG.GIT_MODE", git_mode)
     cache_path = get_cache_path()
     class_mocker.patch("prepare_assignment.core.preparer.cache_path", cache_path)
+    tasks_path = os.path.join(cache_path, "tasks")
+    class_mocker.patch("prepare_assignment.core.preparer.tasks_path", tasks_path)
 
 
 def __clean_cache() -> None:

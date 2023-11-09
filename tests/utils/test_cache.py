@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from pytest_mock import MockerFixture
 
-from prepare_assignment.utils import get_cache_path
+from prepare_assignment.utils.cache import get_cache_path
 
 
 def test_cache_xdg_home(mocker: MockerFixture) -> None:

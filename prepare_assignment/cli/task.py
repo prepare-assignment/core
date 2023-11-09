@@ -1,6 +1,6 @@
 import typer
 
-from prepare_assignment.core.tasks import info, remove, update
+from prepare_assignment.core.tasks import info, remove, update, add
 
 app = typer.Typer(help="Commands that apply to one task")
 
@@ -27,3 +27,11 @@ def display_update(task: str) -> None:
     Update a task
     """
     update(task)
+
+
+@app.command("add")
+def display_add(task: str) -> None:
+    """
+    Add a task
+    """
+    add(task)

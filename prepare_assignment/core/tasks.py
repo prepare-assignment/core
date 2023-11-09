@@ -6,6 +6,7 @@ from pathlib import Path
 import typer
 from treelib import Tree
 
+from prepare_assignment.core.preparer import __prepare_tasks
 from prepare_assignment.data.prepare import Prepare
 from prepare_assignment.data.task_definition import TaskDefinition
 from prepare_assignment.data.task_properties import TaskProperties
@@ -62,3 +63,8 @@ def info(task: str) -> None:
     yaml = YAML_LOADER.load(path)
     task = TaskDefinition.of(yaml, yml_path)
     print(task)
+
+
+def add(task: str) -> None:
+    tasks = [{"uses": task}]
+    __prepare_tasks(tasks, check_inputs=False)
