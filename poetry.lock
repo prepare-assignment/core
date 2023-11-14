@@ -296,6 +296,17 @@ files = [
 ]
 
 [[package]]
+name = "multipledispatch"
+version = "1.0.0"
+description = "Multiple dispatch"
+optional = false
+python-versions = "*"
+files = [
+    {file = "multipledispatch-1.0.0-py3-none-any.whl", hash = "sha256:0c53cd8b077546da4e48869f49b13164bebafd0c2a5afceb6bb6a316e7fb46e4"},
+    {file = "multipledispatch-1.0.0.tar.gz", hash = "sha256:5c839915465c68206c3e9c473357908216c28383b425361e5d144594bf85a7e0"},
+]
+
+[[package]]
 name = "mypy"
 version = "1.6.1"
 description = "Optional static typing for Python"
@@ -853,4 +864,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "c8a7f5ae25d5d87ca1e4d72505359c6aad4c043d64662680d156aa546f40a15e"
+content-hash = "0f3fe6a6b7600dd4f3cfe119f9b804725ae5a559cfda85cdd817dfa5e428088b"

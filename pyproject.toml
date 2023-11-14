@@ -21,6 +21,7 @@ prepare-toolbox = "0.3.0"
 virtualenv = "^20.24.5"
 typer = {extras = ["all"], version = "^0.9.0"}
 treelib = "^1.7.0"
+multipledispatch = "^1.0.0"
 
 [tool.poetry.group.test.dependencies]
 mypy = "^1.1.1"
