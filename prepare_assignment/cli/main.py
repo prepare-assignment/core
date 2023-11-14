@@ -14,8 +14,8 @@ app.add_typer(task_app, name="task")
 app.add_typer(tasks_app, name="tasks")
 
 
-@app.callback()
-def main(
+@app.command()
+def run(
     file_name: Annotated[
         Optional[str],
         typer.Option("--file", "-f", help="Configuration file")
