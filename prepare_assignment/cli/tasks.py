@@ -1,6 +1,6 @@
 import typer
 
-from prepare_assignment.core.tasks import ls, remove_all
+from prepare_assignment.core.task_handler import ls, remove_all
 
 app = typer.Typer(help="Apply action to all tasks")
 

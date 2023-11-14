@@ -4,7 +4,10 @@ import json
 import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, Optional, List, TypedDict
+
+from prepare_assignment.data.task_properties import TaskProperties
 
 
 @dataclass
@@ -85,7 +88,7 @@ class TaskDefinition(ABC):
     description: str
     inputs: List[TaskInputDefinition]
     outputs: Dict[str, TaskOutputDefinition]
-    path: str
+    path: Path
 
     @property
     @abstractmethod
@@ -101,7 +104,7 @@ class TaskDefinition(ABC):
         return {key: TaskOutputDefinition.of(value) for key, value in yaml.items()}
 
     @staticmethod
-    def of(yaml: Dict[str, Any], path: str) -> TaskDefinition:
+    def of(yaml: Dict[str, Any], path: Path) -> TaskDefinition:
         if yaml["runs"]["using"] == "composite":
             return CompositeTaskDefinition.of(yaml, path)
         else:
@@ -130,7 +133,7 @@ class PythonTaskDefinition(TaskDefinition):
     main: str
 
     @classmethod
-    def of(cls, yaml: Dict[str, Any], path: str) -> PythonTaskDefinition:
+    def of(cls, yaml: Dict[str, Any], path: Path) -> PythonTaskDefinition:
         inputs = yaml.get("inputs", {})
         outputs = yaml.get("outputs", {})
         return cls(
@@ -153,7 +156,7 @@ class CompositeTaskDefinition(TaskDefinition):
     tasks: List[Any]
 
     @classmethod
-    def of(cls, yaml: Dict[str, Any], path: str) -> CompositeTaskDefinition:
+    def of(cls, yaml: Dict[str, Any], path: Path) -> CompositeTaskDefinition:
         inputs = yaml.get("inputs", {})
         outputs = yaml.get("outputs", {})
         return cls(
