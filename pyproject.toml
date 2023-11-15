@@ -32,3 +32,10 @@ pytest-mock = "^3.11.1"
 
 [tool.poetry.scripts]
 prepare = 'prepare_assignment.cli.main:app'
+
+[tool.mypy]
+warn_return_any = true
+
+[[tool.mypy.overrides]]
+module = "treelib,ruamel,virtualenv"
+ignore_missing_imports = true
