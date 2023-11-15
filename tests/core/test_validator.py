@@ -94,13 +94,13 @@ def test_validate_task_invalid() -> None:
 
 
 def test_load_yaml(mocker: MockerFixture) -> None:
-    mocker.patch("prepare_assignment.core.validator.yaml.load", return_value="test")
+    mocker.patch("prepare_assignment.core.validator.YAML_LOADER.load", return_value="test")
     load_yaml("test.yml")
 
 
 def test_validate_task_definition_valid(mocker: MockerFixture) -> None:
     mocker.patch("prepare_assignment.core.validator.load_yaml", return_value=TASK_DEFINITION)
-    mocked_yaml_dump = mocker.patch("prepare_assignment.core.validator.yaml.dump")
+    mocked_yaml_dump = mocker.patch("prepare_assignment.core.validator.YAML_LOADER.dump")
     mocked_open = mocker.mock_open()
     mocker.patch("builtins.open", mocked_open)
     validate_task_definition("task.yml")
@@ -109,7 +109,7 @@ def test_validate_task_definition_valid(mocker: MockerFixture) -> None:
 
 def test_validate_task_definition_invalid(mocker: MockerFixture) -> None:
     mocker.patch("prepare_assignment.core.validator.load_yaml", return_value={})
-    mocked_yaml_dump = mocker.patch("prepare_assignment.core.validator.yaml.dump")
+    mocked_yaml_dump = mocker.patch("prepare_assignment.core.validator.YAML_LOADER.dump")
     mocked_open = mocker.mock_open()
     mocker.patch("builtins.open", mocked_open)
     with pytest.raises(ValidationError) as pytest_wrapped_e:

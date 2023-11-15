@@ -11,12 +11,12 @@ from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 from ruamel.yaml import YAML
 
+from prepare_assignment.data.constants import YAML_LOADER
 from prepare_assignment.data.task_definition import TaskDefinition
 from prepare_assignment.data.errors import ValidationError as VE
 from prepare_assignment.utils.default_validator import DefaultValidatingValidator
 
 logger = logging.getLogger("prepare_assignment")
-yaml = YAML(typ='safe')
 
 # Mapping from string to the correct type
 type_map: Dict[str, Type] = {
@@ -81,7 +81,7 @@ def load_yaml(path: str | os.PathLike[str] | os.PathLike) -> Any:
     :return: the loaded yaml file
     """
     path = Path(path)
-    return yaml.load(path)
+    return YAML_LOADER.load(path)
 
 
 def validate_task_definition(path: str | os.PathLike[str] | os.PathLike) -> Any:
@@ -103,7 +103,7 @@ def validate_task_definition(path: str | os.PathLike[str] | os.PathLike) -> Any:
         validate(task_definition, schema, cls=DefaultValidatingValidator)
         # Overwrite the task.yml file as we might have added default values
         with open(path, 'w') as handle:
-            yaml.dump(task_definition, handle)
+            YAML_LOADER.dump(task_definition, handle)
     except ValidationError as ve:
         message = f"Unable to verify: {path}\n\t -> {ve.json_path}: {ve.message}"
         raise VE(message)
