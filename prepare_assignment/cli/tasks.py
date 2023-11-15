@@ -18,4 +18,7 @@ def display_remove() -> None:
     """
     Remove all tasks
     """
+    confirm_remove = typer.confirm("Are you sure you want to remove all tasks?")
+    if not confirm_remove:
+        raise typer.Abort()
     remove_all()

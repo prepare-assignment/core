@@ -36,9 +36,9 @@ def run(
     """
     Parse 'prepare_assignment.y(a)ml' and execute all jobs
     """
-    CONFIG.DEBUG = debug
-    CONFIG.GIT_MODE = git
-    CONFIG.VERBOSITY = verbose
+    CONFIG.DEBUG = debug  # type: ignore
+    CONFIG.GIT_MODE = git # type: ignore
+    CONFIG.VERBOSITY = verbose  # type: ignore
 
     prepare(file_name)
 

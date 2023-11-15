@@ -10,7 +10,7 @@ from typing import Dict, Any, List, Optional
 
 from git import Repo
 from importlib_resources import files
-from virtualenv import cli_run  # type: ignore
+from virtualenv import cli_run
 
 from prepare_assignment.data.constants import CONFIG
 from prepare_assignment.core.validator import validate_task_definition, validate_tasks, load_yaml, \
@@ -212,7 +212,7 @@ def __prepare_tasks(tasks: List[Any], parsed: Optional[Dict[str, ValidTask]] = N
                 task_def["with"] = {}
     else:
         logger.debug(f"Task '{props}' has already been loaded in this run")
-    if check_inputs:
+    if check_inputs and file is not None:
         validate_tasks(file, task_def, parsed[str(props)]["schema"])
     return __prepare_tasks(tasks, parsed, file=file)
 

@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Optional
 
 from prepare_toolbox.file import get_matching_files
-from ruamel.yaml import YAML
 
 from prepare_assignment.core.preparer import prepare_tasks
 from prepare_assignment.core.runner import run
@@ -40,7 +39,7 @@ def __get_prepare_file(file: Optional[str]) -> str:
     return file
 
 
-def prepare(file_name: str) -> None:
+def prepare(file_name: Optional[str]) -> None:
     # Set the logger
     add_logging_level("TRACE", logging.DEBUG - 5, "trace")
     logger = logging.getLogger("prepare_assignment")

@@ -3,6 +3,7 @@ import os.path
 import shutil
 import sys
 from pathlib import Path
+from typing import Set
 
 import typer
 from treelib import Tree
@@ -40,7 +41,7 @@ def remove(task: str, recursive: bool) -> None:
 
 def update(task: str, recursive: bool) -> None:
     props = TaskProperties.of(task)
-    dependencies: set[TaskProperties] = get_dependencies(props) if recursive else {props}
+    dependencies: Set[TaskProperties] = get_dependencies(props) if recursive else {props}
     # TODO: use topological sort to make sure the order we remove and reinstall is the most efficient
     for dep in dependencies:
         # Only update if version is 'latest'
@@ -52,11 +53,7 @@ def update(task: str, recursive: bool) -> None:
 
 
 def remove_all() -> None:
-    confirm_remove = typer.confirm("Are you sure you want to remove all tasks?")
-    if not confirm_remove:
-        print("Not deleting")
-        raise typer.Abort()
-    print("Removing all")
+    shutil.rmtree(tasks_path)
 
 
 def ls() -> None:
@@ -81,14 +78,12 @@ def ls() -> None:
 
 def info(task: str) -> None:
     props = TaskProperties.of(task)
-    yml_path = os.path.join(get_tasks_path(), props.organization, props.name, props.version, "repo", "task.yml")
-    if not os.path.isfile(yml_path):
-        print(f"Path '{yml_path}' doesn't exist", file=sys.stderr)
+    if not os.path.isfile(props.definition_path):
+        print(f"Path '{props.definition_path}' doesn't exist", file=sys.stderr)
         typer.Abort()
-    path = Path(yml_path)
-    yaml = YAML_LOADER.load(path)
-    task = TaskDefinition.of(yaml, yml_path)
-    print(task)
+    yaml = YAML_LOADER.load(props.definition_path)
+    task_def = TaskDefinition.of(yaml, props.definition_path)
+    print(task_def)
 
 
 def add(task: str) -> None:

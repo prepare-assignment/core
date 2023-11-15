@@ -1,13 +1,12 @@
-from typing import Optional, List
+from typing import Set
 
-from multipledispatch import dispatch
+from multipledispatch import dispatch  # type: ignore
 
-from prepare_assignment.data.dependency_graph import DependencyGraph
 from prepare_assignment.data.task_properties import TaskProperties
-from prepare_assignment.utils.tasks import get_all_tasks, load_task
+from prepare_assignment.utils.tasks import load_task
 
 
-def __get_dependencies(tasks: set[TaskProperties], visited: set[TaskProperties]) -> None:
+def __get_dependencies(tasks: Set[TaskProperties], visited: Set[TaskProperties]) -> None:
     if len(tasks) == 0:
         return
     task_properties = tasks.pop()
@@ -24,12 +23,12 @@ def __get_dependencies(tasks: set[TaskProperties], visited: set[TaskProperties])
 
 
 @dispatch(TaskProperties)
-def get_dependencies(task: TaskProperties) -> set[TaskProperties]:
+def get_dependencies(task: TaskProperties) -> Set[TaskProperties]:
     return get_dependencies({task})
 
 
-@dispatch(set)
-def get_dependencies(tasks: set[TaskProperties]) -> set[TaskProperties]:
+@dispatch(set)  # type: ignore
+def get_dependencies(tasks: Set[TaskProperties]) -> Set[TaskProperties]:
     visited = set()
     __get_dependencies(set(tasks), visited)
     return visited
