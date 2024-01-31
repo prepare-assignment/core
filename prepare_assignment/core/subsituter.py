@@ -49,7 +49,8 @@ def __substitute(value: str, environment: JobEnvironment) -> str:
             sub_type = sub.lastgroup
             substitution = None
             if sub_type == "inputs":
-                substitution = environment.inputs.get(sub.group(sub_type), None)
+                substitution_name = sub.group(sub_type)
+                substitution = environment.inputs.get(substitution_name, None)
             elif sub_type == "outputs":
                 step = sub.group("step")
                 output = sub.group("output")

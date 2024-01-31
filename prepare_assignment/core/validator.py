@@ -66,6 +66,10 @@ def validate_tasks(file: str, task: Dict[str, Any], json_schema: Any) -> None:
     task_name = task["uses"]
     logger.debug(f"Validating '{name}' ({task_name})")
     try:
+        # If the yaml file doesn't contain with, the default validator doesn't trigger setting default values
+        # So if the schema has 'with' property and the yaml misses, we can add it manually
+        if json_schema.get("properties", {}).get("with", None) is not None and task.get("with", None) is None:
+            task["with"] = {}
         DefaultValidatingValidator(json_schema).validate(task)
     except ValidationError as ve:
         message = (f"Error in: {file}, unable to verify task '{name}' ({task_name})\n\t "
