@@ -174,6 +174,6 @@ class CompositeTaskDefinition(TaskDefinition):
         return True
 
 
-class ValidTask(TypedDict):
+class ValidableTask(TypedDict):
     schema: Any
     task: TaskDefinition

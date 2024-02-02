@@ -17,7 +17,7 @@ from prepare_assignment.core.validator import validate_task_definition, validate
     validate_default_values
 from prepare_assignment.data.errors import DependencyError, ValidationError, PrepareTaskError
 from prepare_assignment.data.task_definition import TaskDefinition, CompositeTaskDefinition, \
-    PythonTaskDefinition, ValidTask
+    PythonTaskDefinition, ValidableTask
 from prepare_assignment.data.task_properties import TaskProperties
 from prepare_assignment.utils.cache import get_cache_path, get_tasks_path
 
@@ -114,7 +114,7 @@ def __task_install_dependencies(task_path: Path) -> None:
         raise DependencyError(f"Unable to install dependencies for '{repo_path}', see '{file}' for more info")
 
 
-def __load_task_from_disk(props: TaskProperties, parsed: Dict[str, ValidTask]) -> None:
+def __load_task_from_disk(props: TaskProperties, parsed: Dict[str, ValidableTask]) -> None:
     logger.debug(f"Task '{props}' is already available, loading from disk")
     with open(os.path.join(props.task_path, f"{props.name}.schema.json"), "r") as handle:
         json_schema = json.load(handle)
@@ -130,7 +130,7 @@ def __load_task_from_disk(props: TaskProperties, parsed: Dict[str, ValidTask]) -
             __load_task_from_disk(sub_props, parsed)
 
 
-def __prepare_task(props: TaskProperties) -> ValidTask:
+def __prepare_task(props: TaskProperties) -> ValidableTask:
     try:
         # Download the task (clone the repository)
         __download_task(props)
@@ -162,8 +162,8 @@ def __prepare_task(props: TaskProperties) -> ValidTask:
         raise PrepareTaskError(f"Unable to prepare task '{str(props)}'", e)
 
 
-def __prepare_tasks(tasks: List[Any], parsed: Optional[Dict[str, ValidTask]] = None, *,
-                    file: Optional[str] = None, check_inputs: bool = True) -> Dict[str, ValidTask]:
+def __prepare_tasks(tasks: List[Any], parsed: Optional[Dict[str, ValidableTask]] = None, *,
+                    file: Optional[str] = None, check_inputs: bool = True) -> Dict[str, ValidableTask]:
     # Unfortunately we cannot do this as a default value, see:
     # https://docs.python-guide.org/writing/gotchas/#mutable-default-arguments
     if parsed is None:
