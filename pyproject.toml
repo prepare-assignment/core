@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "prepare-assignment"
-version = "0.1.1"
+version = "0.1.2"
 description = "Prepare assignment"
 authors = ["Bonajo <m.bonajo@fontys.nl>"]
 license = "MIT"
@@ -13,12 +13,12 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.dependencies]
 python = "^3.8"
-ruamel-yaml = "^0.17.21"
-jsonschema = "^4.17.3"
-importlib-resources = "^5.12.0"
-gitpython = "^3.1.31"
-prepare-toolbox = "0.3.0"
-virtualenv = "^20.24.5"
+ruamel-yaml = "^0.18.5"
+jsonschema = "^4.21.1"
+importlib-resources = "^6.1.1"
+gitpython = "^3.1.41"
+prepare-toolbox = "0.4.0"
+virtualenv = "^20.25.0"
 typer = {extras = ["all"], version = "^0.9.0"}
 treelib = "^1.7.0"
 multipledispatch = "^1.0.0"
