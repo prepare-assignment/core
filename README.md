@@ -7,7 +7,28 @@ Prepare assignment is a GitHub Actions inspired helper tool to prepare assignmen
 - Git
 - Python >=3.8
 
-## Example
+## Installation
+
+Prepare-assignment is available from [PyPI](https://pypi.org/).
+
+
+```bash
+# To install:
+python3 -m pip install prepare-assignment
+
+# To upgrade
+python3 -m pip install --upgrade prepare-assignment
+```
+
+## Executing prepare-assignment
+
+To execute a `prepare.yml` simply run `prepare run` from the same directory.
+
+### Command line interface
+
+Use `prepare --help` to which commands and flags are available.
+
+## Example `prepare.yml`
 
 First we need to have tasks available that can be executed. Take for example a look at the [remove](https://github.com/prepare-assignment/remove) task.
 
