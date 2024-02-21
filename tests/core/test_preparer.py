@@ -11,8 +11,9 @@ from pytest_mock import MockerFixture
 
 from prepare_assignment.core.preparer import prepare_tasks, __task_install_dependencies
 from prepare_assignment.data.errors import DependencyError
-from prepare_assignment.utils import get_cache_path
 from virtualenv import cli_run  # type: ignore
+
+from prepare_assignment.utils.cache import get_cache_path
 
 PREPARE: Final[Dict[str, Any]] = {
     'prepare': [
@@ -25,23 +26,23 @@ PREPARE: Final[Dict[str, Any]] = {
     ]
 }
 
+CACHE_PATH: Final[str] = os.path.join(tempfile.gettempdir(), "prepare")
+TASKS_PATH: Final[str] = os.path.join(CACHE_PATH, "tasks")
+
 
 @pytest.fixture(scope="class", autouse=True)
 def set_cache(class_mocker) -> None:
-    class_mocker.patch.dict(os.environ, {
-        "XDG_CACHE_HOME": str(Path("/tmp")),
-        "LOCALAPPDATA": str(Path(os.environ.get("Temp", "c:/temp")))
-    })
     git_mode = os.environ.get("PREPARE_TEST_GIT_MODE", "ssh")
     class_mocker.patch("prepare_assignment.core.preparer.CONFIG.GIT_MODE", git_mode)
-    cache_path = get_cache_path()
-    class_mocker.patch("prepare_assignment.core.preparer.cache_path", cache_path)
+
+    class_mocker.patch("prepare_assignment.core.preparer.cache_path", CACHE_PATH)
+    class_mocker.patch("prepare_assignment.data.task_properties.tasks_path", TASKS_PATH)
+    class_mocker.patch("prepare_assignment.core.preparer.tasks_path", TASKS_PATH)
 
 
 def __clean_cache() -> None:
-    cache_path = get_cache_path()
 
-    if not os.path.exists(cache_path):
+    if not os.path.exists(CACHE_PATH):
         return
 
     # We need to fix the readonly git directory on windows
@@ -52,11 +53,11 @@ def __clean_cache() -> None:
             func(path)
 
     if sys.platform == "win32":
-        shutil.rmtree(cache_path, onerror=onerror)
+        shutil.rmtree(CACHE_PATH, onerror=onerror)
     else:
-        shutil.rmtree(cache_path, ignore_errors=True)
+        shutil.rmtree(CACHE_PATH, ignore_errors=True)
 
-    Path(cache_path).mkdir(parents=True, exist_ok=True)
+    Path(CACHE_PATH).mkdir(parents=True, exist_ok=True)
 
 
 def test_prepare_run_task() -> None:

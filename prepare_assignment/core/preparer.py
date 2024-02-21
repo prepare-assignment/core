@@ -6,32 +6,29 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional, TypedDict
+from typing import Dict, Any, List, Optional
 
 from git import Repo
 from importlib_resources import files
-from virtualenv import cli_run  # type: ignore
+from virtualenv import cli_run
 
+from prepare_assignment.data.constants import CONFIG
 from prepare_assignment.core.validator import validate_task_definition, validate_tasks, load_yaml, \
     validate_default_values
-from prepare_assignment.data.task_definition import TaskDefinition, CompositeTaskDefinition, \
-    PythonTaskDefinition, ValidTask
-from prepare_assignment.data.task_properties import TaskProperties
-from prepare_assignment.data.constants import CONFIG
 from prepare_assignment.data.errors import DependencyError, ValidationError, PrepareTaskError
-from prepare_assignment.utils.cache import get_cache_path
+from prepare_assignment.data.task_definition import TaskDefinition, CompositeTaskDefinition, \
+    PythonTaskDefinition, ValidableTask
+from prepare_assignment.data.task_properties import TaskProperties
+from prepare_assignment.utils.cache import get_cache_path, get_tasks_path
 
 # Set the cache path
 cache_path = get_cache_path()
+tasks_path = get_tasks_path()
 # Get the logger
 logger = logging.getLogger("prepare_assignment")
 # Load the task template file
 template_file = files().joinpath('../schemas/task.schema.json_template')
 template: str = template_file.read_text()
-
-
-def __repo_path(props: TaskProperties) -> Path:
-    return Path(os.path.join(cache_path, props.organization, props.name, props.version, "repo"))
 
 
 def __download_task(props: TaskProperties) -> Path:
@@ -41,19 +38,18 @@ def __download_task(props: TaskProperties) -> Path:
     :param props: task properties
     :returns Path: the path where the repo is checked out
     """
-    path: Path = __repo_path(props)
-    path.mkdir(parents=True, exist_ok=True)
+    props.repo_path.mkdir(parents=True, exist_ok=True)
     git_url: str
     if CONFIG.GIT_MODE == "https":
         git_url = f"https://github.com/{props.organization}/{props.name}.git"
     else:
         git_url = f"git@github.com:{props.organization}/{props.name}.git"
     logger.debug(f"Cloning repository: {git_url}")
-    with Repo.clone_from(git_url, path) as repo:
+    with Repo.clone_from(git_url, props.repo_path) as repo:
         if props.version != "latest":
             logger.debug(f"Checking out correct version of repository: {props.version}")
             repo.git.checkout(props.version)
-    return path
+    return props.repo_path
 
 
 def __build_json_schema(props: TaskProperties, task: TaskDefinition) -> str:
@@ -84,33 +80,7 @@ def __build_json_schema(props: TaskProperties, task: TaskDefinition) -> str:
     return schema
 
 
-def __task_properties(task: str) -> TaskProperties:
-    parts = task.split("/")
-    if len(parts) > 2:
-        raise AssertionError("Tasks cannot have more than one slash")
-    elif len(parts) == 1:
-        parts.insert(0, "prepare-assignment")
-    organization: str = parts[0]
-    name = parts[1]
-    split = name.split("@")
-    version: str = "latest"
-    task_name: str = name
-    if len(split) > 2:
-        raise AssertionError("Cannot have multiple '@' symbols in the name")
-    elif len(split) == 2:
-        task_name = split[0]
-        version = split[1]
-    return TaskProperties(organization, task_name, version)
-
-
-def __task_dict_to_definition(task: Any, path: str) -> TaskDefinition:
-    if task["runs"]["using"] == "composite":
-        return CompositeTaskDefinition.of(task, path)
-    else:
-        return PythonTaskDefinition.of(task, path)
-
-
-def __task_install_dependencies(task_path: str) -> None:
+def __task_install_dependencies(task_path: Path) -> None:
     if sys.platform == "win32":
         venv_path = os.path.join(task_path, "venv", "scripts", "python.exe")
     else:
@@ -144,64 +114,56 @@ def __task_install_dependencies(task_path: str) -> None:
         raise DependencyError(f"Unable to install dependencies for '{repo_path}', see '{file}' for more info")
 
 
-def __load_task_from_disk(task_name: str,
-                          task_path: str,
-                          props: TaskProperties,
-                          parsed: Dict[str, ValidTask]
-                          ) -> None:
-    logger.debug(f"Task '{task_name}' is already available, loading from disk")
-    repo_path = __repo_path(props)
-    yaml_path = os.path.join(repo_path, "task.yml")
-    with open(os.path.join(task_path, f"{props.name}.schema.json"), "r") as handle:
+def __load_task_from_disk(props: TaskProperties, parsed: Dict[str, ValidableTask]) -> None:
+    logger.debug(f"Task '{props}' is already available, loading from disk")
+    with open(os.path.join(props.task_path, f"{props.name}.schema.json"), "r") as handle:
         json_schema = json.load(handle)
-    task_yaml = load_yaml(yaml_path)
-    task = __task_dict_to_definition(task_yaml, task_path)
-    parsed[task_name] = {"schema": json_schema, "task": task}
+    task_yaml = load_yaml(props.definition_path)
+    task = TaskDefinition.of(task_yaml, props.task_path)
+    parsed[str(props)] = {"schema": json_schema, "task": task}
     if isinstance(task, CompositeTaskDefinition):
         for sub_task in task.tasks:
             sub_task_name = sub_task.get("uses", None)
             if sub_task_name is None:
                 continue
-            sub_props = __task_properties(sub_task_name)
-            task_path = os.path.join(cache_path, sub_props.organization, sub_props.name, sub_props.version)
-            __load_task_from_disk(sub_task_name, task_path, sub_props, parsed)
+            sub_props = TaskProperties.of(sub_task_name)
+            __load_task_from_disk(sub_props, parsed)
 
 
-def __prepare_task(props: TaskProperties, task_path: str, repo_path: Path) -> ValidTask:
+def __prepare_task(props: TaskProperties) -> ValidableTask:
     try:
         # Download the task (clone the repository)
         __download_task(props)
         # Validate that the task.yml is valid
-        yaml_path = os.path.join(repo_path, "task.yml")
-        task_yaml = validate_task_definition(yaml_path)
-        task: TaskDefinition = __task_dict_to_definition(task_yaml, task_path)
+        task_yaml = validate_task_definition(props.definition_path)
+        task: TaskDefinition = TaskDefinition.of(task_yaml, props.task_path)
         validate_default_values(task)
         if isinstance(task, PythonTaskDefinition):
-            main_path = os.path.join(repo_path, Path(task.main))  # type: ignore
+            main_path = os.path.join(props.repo_path, Path(task.main))  # type: ignore
             if not os.path.isfile(main_path):
                 error_msg = f"Main file '{task.main}' does not exist for task '{task.name}'"  # type: ignore
                 raise ValidationError(error_msg)
             # Create a virtualenv for this task
-            cli_run([os.path.join(task_path, "venv")])
+            cli_run([os.path.join(props.task_path, "venv")])
             # Install dependencies
-            __task_install_dependencies(task_path)
+            __task_install_dependencies(props.task_path)
         # Now we can build a schema for this task
         schema = __build_json_schema(props, task)
         json_schema = json.loads(schema)
-        with open(os.path.join(task_path, f"{props.name}.schema.json"), 'w') as handle:
+        with open(os.path.join(props.task_path, f"{props.name}.schema.json"), 'w') as handle:
             handle.write(schema)
         return {"schema": json_schema, "task": task}
     except Exception as e:
         # If something went wrong in the previous steps,
         # that means the task is not valid and should be removed
-        shutil.rmtree(task_path)
+        shutil.rmtree(props.task_path)
         # We need to raise an exception, because if it was part of a composite task,
         # then that task is also not valid
         raise PrepareTaskError(f"Unable to prepare task '{str(props)}'", e)
 
 
-def __prepare_tasks(file: str, tasks: List[Any], parsed: Optional[Dict[str, ValidTask]] = None) \
-        -> Dict[str, ValidTask]:
+def __prepare_tasks(tasks: List[Any], parsed: Optional[Dict[str, ValidableTask]] = None, *,
+                    file: Optional[str] = None, check_inputs: bool = True) -> Dict[str, ValidableTask]:
     # Unfortunately we cannot do this as a default value, see:
     # https://docs.python-guide.org/writing/gotchas/#mutable-default-arguments
     if parsed is None:
@@ -211,30 +173,32 @@ def __prepare_tasks(file: str, tasks: List[Any], parsed: Optional[Dict[str, Vali
         return parsed
 
     task_def = tasks.pop()
-    uses: str = task_def["uses"]
+    props = TaskProperties.of(task_def["uses"])
+
+    # Make sure that we always talk about the same task/version, e.g. the following are all the same
+    # remove, remove@latest, prepare-assignment/remove@latest
+    task_def["uses"] = str(props)
     # Check if we have already loaded the task
-    if parsed.get(uses, None) is None:
-        logger.debug(f"Task '{uses}' has not been loaded in this run")
-        props = __task_properties(uses)
+    if parsed.get(str(props), None) is None:
+        logger.debug(f"Task '{props}' has not been loaded in this run")
         # Check if task (therefore the path) has already been downloaded in previous run
-        task_path = os.path.join(cache_path, props.organization, props.name, props.version)
-        repo_path = __repo_path(props)
+        task_path = props.task_path
         if os.path.isdir(task_path):
-            __load_task_from_disk(uses, task_path, props, parsed)
+            __load_task_from_disk(props, parsed)
         else:
-            logger.debug(f"Task '{uses}' is not available on this system")
-            valid_task = __prepare_task(props, task_path, repo_path)
+            logger.debug(f"Task '{props}' is not available on this system")
+            valid_task = __prepare_task(props)
             # Check if it is a composite task, in that case we might need to retrieve more tasks
             task = valid_task["task"]
             if isinstance(task, CompositeTaskDefinition):
-                logger.debug(f"Task '{uses}' is a composite task, preparing sub-tasks")
+                logger.debug(f"Task '{props}' is a composite task, preparing sub-tasks")
                 all_tasks: List[Any] = []
                 for step in task.tasks:
                     name = step.get("uses", None)
                     if name is not None:
                         all_tasks.append(step)
                 try:
-                    parsed = __prepare_tasks(str(repo_path), all_tasks, parsed)
+                    parsed = __prepare_tasks(all_tasks, parsed, file=str(props.repo_path))
                 except PrepareTaskError as PE:
                     # If any of the subtasks this composite task depend on fails,
                     # we have to remove this task as well
@@ -242,14 +206,15 @@ def __prepare_tasks(file: str, tasks: List[Any], parsed: Optional[Dict[str, Vali
                     raise PE
                 except Exception as e:
                     shutil.rmtree(task_path)
-                    raise PrepareTaskError(f"Unable to prepare task '{uses}'", e)
-            parsed[uses] = valid_task
+                    raise PrepareTaskError(f"Unable to prepare task '{props}'", e)
+            parsed[str(props)] = valid_task
             if task_def.get("with", None) is None:
                 task_def["with"] = {}
     else:
-        logger.debug(f"Task '{uses}' has already been loaded in this run")
-    validate_tasks(file, task_def, parsed[uses]["schema"])
-    return __prepare_tasks(file, tasks, parsed)
+        logger.debug(f"Task '{props}' has already been loaded in this run")
+    if check_inputs and file is not None:
+        validate_tasks(file, task_def, parsed[str(props)]["schema"])
+    return __prepare_tasks(tasks, parsed, file=file)
 
 
 def prepare_tasks(prepare_file: str, jobs: Dict[str, Any]) -> Dict[str, TaskDefinition]:
@@ -268,14 +233,12 @@ def prepare_tasks(prepare_file: str, jobs: Dict[str, Any]) -> Dict[str, TaskDefi
     """
     logger.debug("========== Preparing tasks")
     all_tasks: List[Any] = []
-    # DON'T FORGET TO REMOVE, ONLY FOR DEVELOPMENT
-    # shutil.rmtree(cache_path, ignore_errors=True)
     # Iterate through all the tasks to make sure that they are available
     for step, tasks in jobs.items():
         for task in tasks:
             # If the task is a run command, we don't need to do anything
             if task.get("uses", None) is not None:
                 all_tasks.append(task)
-    mapping = __prepare_tasks(prepare_file, all_tasks)
+    mapping = __prepare_tasks(all_tasks, file=prepare_file)
     logger.debug("✓ All tasks downloaded and valid")
     return {k: v["task"] for k, v in mapping.items()}

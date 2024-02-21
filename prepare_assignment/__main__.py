@@ -1,4 +1,4 @@
-from prepare_assignment.core.cli import main
+from prepare_assignment.cli.main import app
 
 if __name__ == '__main__':
-    main()
+    app(prog_name="prepare")

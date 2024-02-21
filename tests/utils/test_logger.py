@@ -3,8 +3,7 @@ import logging
 import pytest
 
 from prepare_assignment.data.constants import LOG_LEVEL_TRACE
-from prepare_assignment.utils import set_logger_level
-from prepare_assignment.utils.logger import ColourFormatter, add_logging_level
+from prepare_assignment.utils.logger import ColourFormatter, add_logging_level, set_logger_level
 
 
 def test_set_colour() -> None:

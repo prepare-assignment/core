@@ -14,6 +14,7 @@ from prepare_assignment.data.task_definition import TaskDefinition, PythonTaskDe
 from prepare_assignment.data.constants import BASH_EXECUTABLE
 from prepare_assignment.data.prepare import Prepare, Task
 from prepare_assignment.data.job_environment import JobEnvironment
+from prepare_assignment.data.task_properties import TaskProperties
 
 # Get the logger
 logger = logging.getLogger("prepare_assignment")
@@ -53,6 +54,10 @@ def __execute_task(environment: JobEnvironment) -> None:
     for key, value in environment.current_task.with_.items():  # type: ignore
         sanitized = "PREPARE_" + key.replace(" ", "_").upper()
         env[sanitized] = json.dumps(value)
+    for inp in task.inputs:
+        if inp.default is not None and not inp.name in environment.current_task.with_.keys():  # type: ignore
+            sanitized = "PREPARE_" + inp.name.replace(" ", "_").upper()
+            env[sanitized] = json.dumps(inp.default)
     with subprocess.Popen(
         [executable, main_path],
         stdout=subprocess.PIPE,
@@ -93,9 +98,10 @@ def __handle_task(mapping: Dict[str, TaskDefinition],
     # Check what kind of task it is
     if task.is_run:
         command = __substitute(task.run, environment)  # type: ignore
-        __execute_shell_command(command, environment.environment)
+        __execute_shell_command(command, environment.environment)  # type: ignore
     else:
-        task_definition = mapping.get(task.uses)  # type: ignore
+        task_properties = TaskProperties.of(task.uses)  # type: ignore
+        task_definition = mapping.get(str(task_properties))
         substitute_all(task.with_, environment)  # type: ignore
         if task_definition.is_composite:  # type: ignore
             sub_env = environment.environment.copy()
