@@ -1,3 +1,4 @@
+import copy
 import json
 import logging
 import os.path
@@ -107,6 +108,7 @@ def __handle_task(mapping: Dict[str, TaskDefinition],
             sub_env = environment.environment.copy()
             sub_environment = JobEnvironment(sub_env, outputs={}, inputs=task.with_)  # type: ignore
             for subtask in task_definition.tasks:  # type: ignore
+                subtask = copy.deepcopy(subtask)
                 subtask = Task.of(subtask)
                 __handle_task(mapping, subtask, sub_environment)
         else:
