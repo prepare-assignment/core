@@ -35,6 +35,7 @@ jobs:
         installer-parallel: true
     - run: cat $(find /home/runner/work/core/core/ -type f -name "*.log")
       name: Read the log
+      if: always()
     - name: Load cached venv
       id: cached-poetry-venv
       uses: actions/cache@v3
