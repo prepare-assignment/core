@@ -3,14 +3,14 @@ from typing import Dict, List
 
 class Vertex:
 
-    def __init__(self):
-        self.dependents = []
-        self.dependencies = []
+    def __init__(self) -> None:
+        self.dependents: List[str] = []
+        self.dependencies: List[str] = []
 
 
 class DependencyGraph:
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.vertices: Dict[str, Vertex] = {}
 
     def add_node(self, name: str) -> None:

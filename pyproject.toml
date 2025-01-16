@@ -12,7 +12,7 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.9"
 ruamel-yaml = "^0.18.5"
 jsonschema = "^4.21.1"
 importlib-resources = "^6.1.1"
