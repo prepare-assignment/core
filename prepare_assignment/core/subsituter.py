@@ -73,9 +73,9 @@ def __substitute(value: str, environment: JobEnvironment, is_list: bool = False)
     })
     previous = 0
     result = ""
-    for sub in substitutions:
-        result += value[previous:sub["start"]] + sub["sub"]
-        previous = sub["end"]
+    for sub in substitutions: # type: ignore
+        result += value[previous:sub["start"]] + sub["sub"] # type: ignore
+        previous = sub["end"] # type: ignore
     return result
 
 
