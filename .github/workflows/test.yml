@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.9", "3.10", "3.11"]
         os: ["ubuntu-latest", "windows-latest", "macos-latest"]
     runs-on: ${{ matrix.os }}
     permissions:
@@ -33,9 +33,6 @@ jobs:
         virtualenvs-create: true
         virtualenvs-in-project: true
         installer-parallel: true
-    - run: cat $(find /home/runner/work/core/core/ -type f -name "*.log")
-      name: Read the log
-      if: always()
     - name: Load cached venv
       id: cached-poetry-venv
       uses: actions/cache@v3
