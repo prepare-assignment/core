@@ -33,6 +33,8 @@ jobs:
         virtualenvs-create: true
         virtualenvs-in-project: true
         installer-parallel: true
+    - run: cat $(find /home/runner/work/core/core/ -type f -name "*.log")
+      name: Read the log
     - name: Load cached venv
       id: cached-poetry-venv
       uses: actions/cache@v3
