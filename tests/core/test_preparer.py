@@ -13,7 +13,7 @@ from prepare_assignment.core.preparer import prepare_tasks, __task_install_depen
 from prepare_assignment.data.errors import DependencyError
 from virtualenv import cli_run  # type: ignore
 
-from prepare_assignment.utils.cache import get_cache_path
+from prepare_assignment.utils.paths import get_cache_path
 
 PREPARE: Final[Dict[str, Any]] = {
     'prepare': [

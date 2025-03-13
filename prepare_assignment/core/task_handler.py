@@ -12,7 +12,7 @@ from prepare_assignment.core.preparer import __prepare_tasks
 from prepare_assignment.data.constants import YAML_LOADER
 from prepare_assignment.data.task_definition import TaskDefinition
 from prepare_assignment.data.task_properties import TaskProperties
-from prepare_assignment.utils.cache import get_tasks_path
+from prepare_assignment.utils.paths import get_tasks_path
 from prepare_assignment.utils.dependency import get_dependencies
 from prepare_assignment.utils.tasks import get_all_tasks
 

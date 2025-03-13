@@ -19,7 +19,7 @@ from prepare_assignment.data.errors import DependencyError, ValidationError, Pre
 from prepare_assignment.data.task_definition import TaskDefinition, CompositeTaskDefinition, \
     PythonTaskDefinition, ValidableTask
 from prepare_assignment.data.task_properties import TaskProperties
-from prepare_assignment.utils.cache import get_cache_path, get_tasks_path
+from prepare_assignment.utils.paths import get_cache_path, get_tasks_path
 
 # Set the cache path
 cache_path = get_cache_path()

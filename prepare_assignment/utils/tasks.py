@@ -4,7 +4,7 @@ from typing import List
 from prepare_assignment.data.constants import YAML_LOADER
 from prepare_assignment.data.task_definition import TaskDefinition
 from prepare_assignment.data.task_properties import TaskProperties
-from prepare_assignment.utils.cache import get_tasks_path
+from prepare_assignment.utils.paths import get_tasks_path
 
 
 def get_all_tasks() -> List[TaskProperties]:
