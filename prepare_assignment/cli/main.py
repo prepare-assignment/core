@@ -14,7 +14,7 @@ from prepare_assignment.data.constants import CONFIG
 from prepare_assignment.utils.paths import get_config_path
 from prepare_assignment.utils.virtual_env import get_virtualenv_name
 
-app = typer.Typer(invoke_without_command=False)
+app = typer.Typer(invoke_without_command=True)
 app.add_typer(task_app, name="task")
 app.add_typer(tasks_app, name="tasks")
 
