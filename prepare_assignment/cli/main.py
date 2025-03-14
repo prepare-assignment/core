@@ -27,7 +27,7 @@ def main(ctx: typer.Context):
         typer.echo(f"Prepare version: {__version__}")
         typer.echo(f"Config in use: {config_exists}")
         typer.echo(f"Config path: {config_path}")
-        typer.echo(f"Python version: {sys.version.split(" ")[0]}")
+        typer.echo(f"Python version: {sys.version.split(' ')[0]}")
         typer.echo(f"Virtual env: {get_virtualenv_name()}")
 
 
