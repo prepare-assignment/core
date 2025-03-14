@@ -8,10 +8,11 @@ from prepare_toolbox.file import get_matching_files
 from prepare_assignment.core.preparer import prepare_tasks
 from prepare_assignment.core.runner import run
 from prepare_assignment.core.validator import validate_prepare
-from prepare_assignment.data.constants import CONFIG, YAML_LOADER
+from prepare_assignment.data.constants import CONFIG
 from prepare_assignment.data.errors import PrepareTaskError, PrepareError
 from prepare_assignment.data.prepare import Prepare
 from prepare_assignment.utils.logger import add_logging_level, set_logger_level
+from prepare_assignment.utils.yml_loader import YAML_LOADER
 
 
 def __get_prepare_file(file: Optional[str]) -> str:
@@ -44,8 +45,8 @@ def prepare(file_name: Optional[str]) -> None:
     add_logging_level("TRACE", logging.DEBUG - 5, "trace")
     logger = logging.getLogger("prepare_assignment")
     tasks_logger = logging.getLogger("tasks")
-    set_logger_level(logger, CONFIG.DEBUG)
-    set_logger_level(tasks_logger, CONFIG.VERBOSITY, prefix="\t[TASK] ", debug_linenumbers=False)
+    set_logger_level(logger, CONFIG.core.debug)
+    set_logger_level(tasks_logger, CONFIG.core.verbose, prefix="\t[TASK] ", debug_linenumbers=False)
 
     try:
         # Get the prepare_assignment.yml file

@@ -6,8 +6,9 @@
   "properties": {
     "core": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
-        "git_mode": {
+        "git-mode": {
           "description": "The mode git should use to checkout tasks",
           "type": "string",
           "enum": [

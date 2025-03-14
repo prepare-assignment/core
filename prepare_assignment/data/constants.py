@@ -1,13 +1,9 @@
 import logging
-import os
 import re
-import shutil
-import sys
 from typing import Final, Dict, Type, List
 
-from ruamel.yaml import YAML
-
-from prepare_assignment.data.config import Config, Core
+from prepare_assignment.data.config import Config
+from prepare_assignment.utils.config import load_config
 from prepare_assignment.utils.executables import get_bash_path
 
 TYPE_MAPPING: Final[Dict[str, Type]] = {
@@ -31,10 +27,6 @@ SUB_REGEX: Final[re.Pattern] = re.compile("|".join(SUBSTITUTIONS))
 
 LOG_LEVEL_TRACE: Final[int] = logging.DEBUG - 5
 
-CONFIG: Config = Config(Core())
+CONFIG: Config = load_config()
 
 BASH_EXECUTABLE: Final[str] = get_bash_path()
-
-YAML_LOADER = YAML(typ='safe')
-YAML_LOADER.brace_single_entry_mapping_in_flow_sequence = False
-YAML_LOADER.default_flow_style = True

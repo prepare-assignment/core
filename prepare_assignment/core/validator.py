@@ -10,10 +10,10 @@ from importlib_resources import files
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 
-from prepare_assignment.data.constants import YAML_LOADER
 from prepare_assignment.data.errors import ValidationError as VE
 from prepare_assignment.data.task_definition import TaskDefinition
 from prepare_assignment.utils.default_validator import DefaultValidatingValidator
+from prepare_assignment.utils.yml_loader import YAML_LOADER
 
 logger = logging.getLogger("prepare_assignment")
 

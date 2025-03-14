@@ -40,7 +40,7 @@ def __download_task(props: TaskProperties) -> Path:
     """
     props.repo_path.mkdir(parents=True, exist_ok=True)
     git_url: str
-    if CONFIG.GIT_MODE == "https":
+    if CONFIG.core.git_mode == "https":
         git_url = f"https://github.com/{props.organization}/{props.name}.git"
     else:
         git_url = f"git@github.com:{props.organization}/{props.name}.git"

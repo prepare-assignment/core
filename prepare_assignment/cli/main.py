@@ -8,9 +8,7 @@ from prepare_assignment.cli.tasks import app as tasks_app
 from prepare_assignment.core.main import prepare
 from prepare_assignment.data.config import GitMode
 from prepare_assignment.data.constants import CONFIG
-from prepare_assignment.utils.config import load_config
 
-load_config()
 app = typer.Typer(invoke_without_command=False)
 app.add_typer(task_app, name="task")
 app.add_typer(tasks_app, name="tasks")

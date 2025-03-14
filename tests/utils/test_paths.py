@@ -54,7 +54,7 @@ def test_cache_unsupported(mocker: MockerFixture) -> None:
 
 def test_config_xdg_home(mocker: MockerFixture) -> None:
     mock = mocker.patch("prepare_assignment.utils.paths.sys")
-    mocker.patch("prepare_assignment.utils.paths.__cache_path", None)
+    mocker.patch("prepare_assignment.utils.paths.__config_path", None)
     mock.platform = "linux"
     mocker.patch.dict(os.environ, {"XDG_CONFIG_HOME": "test"})
     expected = Path("test/prepare")

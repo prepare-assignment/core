@@ -2,19 +2,18 @@ import logging
 import os.path
 import shutil
 import sys
-from pathlib import Path
 from typing import Set
 
 import typer
 from treelib import Tree
 
 from prepare_assignment.core.preparer import __prepare_tasks
-from prepare_assignment.data.constants import YAML_LOADER
 from prepare_assignment.data.task_definition import TaskDefinition
 from prepare_assignment.data.task_properties import TaskProperties
-from prepare_assignment.utils.paths import get_tasks_path
 from prepare_assignment.utils.dependency import get_dependencies
+from prepare_assignment.utils.paths import get_tasks_path
 from prepare_assignment.utils.tasks import get_all_tasks
+from prepare_assignment.utils.yml_loader import YAML_LOADER
 
 logger = logging.getLogger("prepare_assignment")
 tasks_path = get_tasks_path()
