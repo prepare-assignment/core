@@ -13,7 +13,7 @@ from prepare_assignment.core.preparer import prepare_tasks, __task_install_depen
 from prepare_assignment.data.errors import DependencyError
 from virtualenv import cli_run  # type: ignore
 
-from prepare_assignment.utils.cache import get_cache_path
+from prepare_assignment.utils.paths import get_cache_path
 
 PREPARE: Final[Dict[str, Any]] = {
     'prepare': [
@@ -33,7 +33,7 @@ TASKS_PATH: Final[str] = os.path.join(CACHE_PATH, "tasks")
 @pytest.fixture(scope="class", autouse=True)
 def set_cache(class_mocker) -> None:
     git_mode = os.environ.get("PREPARE_TEST_GIT_MODE", "ssh")
-    class_mocker.patch("prepare_assignment.core.preparer.CONFIG.GIT_MODE", git_mode)
+    class_mocker.patch("prepare_assignment.core.preparer.CONFIG.core.git_mode", git_mode)
 
     class_mocker.patch("prepare_assignment.core.preparer.cache_path", CACHE_PATH)
     class_mocker.patch("prepare_assignment.data.task_properties.tasks_path", TASKS_PATH)

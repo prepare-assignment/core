@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "prepare-config",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "core": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "git-mode": {
+          "description": "The mode git should use to checkout tasks",
+          "type": "string",
+          "enum": [
+            "ssh",
+            "https"
+          ],
+          "default": "ssh"
+        },
+        "debug": {
+          "description": "The level of debug messages to show",
+          "type": "integer",
+          "default": 0
+        },
+        "verbose": {
+          "description": "The level of verbosity",
+          "type": "integer",
+          "default": 0
+        }
+      }
+    }
+  }
+}

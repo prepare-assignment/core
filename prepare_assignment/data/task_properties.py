@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
 
-from prepare_assignment.utils.cache import get_tasks_path
+from prepare_assignment.utils.paths import get_tasks_path
 
 tasks_path = get_tasks_path()
 

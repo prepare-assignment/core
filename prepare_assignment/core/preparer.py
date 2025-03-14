@@ -19,7 +19,7 @@ from prepare_assignment.data.errors import DependencyError, ValidationError, Pre
 from prepare_assignment.data.task_definition import TaskDefinition, CompositeTaskDefinition, \
     PythonTaskDefinition, ValidableTask
 from prepare_assignment.data.task_properties import TaskProperties
-from prepare_assignment.utils.cache import get_cache_path, get_tasks_path
+from prepare_assignment.utils.paths import get_cache_path, get_tasks_path
 
 # Set the cache path
 cache_path = get_cache_path()
@@ -40,7 +40,7 @@ def __download_task(props: TaskProperties) -> Path:
     """
     props.repo_path.mkdir(parents=True, exist_ok=True)
     git_url: str
-    if CONFIG.GIT_MODE == "https":
+    if CONFIG.core.git_mode == "https":
         git_url = f"https://github.com/{props.organization}/{props.name}.git"
     else:
         git_url = f"git@github.com:{props.organization}/{props.name}.git"

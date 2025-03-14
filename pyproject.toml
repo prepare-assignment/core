@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "prepare-assignment"
-version = "0.1.3"
+version = "0.2.0"
 description = "Prepare assignment"
 authors = ["Bonajo <m.bonajo@fontys.nl>"]
 license = "MIT"
@@ -22,6 +22,7 @@ virtualenv = "^20.25.0"
 typer = {extras = ["all"], version = "^0.9.0"}
 treelib = "^1.7.0"
 multipledispatch = "^1.0.0"
+dacite = "^1.9.2"
 
 [tool.poetry.group.test.dependencies]
 mypy = "^1.1.1"
