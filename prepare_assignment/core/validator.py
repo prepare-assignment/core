@@ -9,11 +9,10 @@ from typing import Dict, Any, Type
 from importlib_resources import files
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
-from ruamel.yaml import YAML
 
 from prepare_assignment.data.constants import YAML_LOADER
-from prepare_assignment.data.task_definition import TaskDefinition
 from prepare_assignment.data.errors import ValidationError as VE
+from prepare_assignment.data.task_definition import TaskDefinition
 from prepare_assignment.utils.default_validator import DefaultValidatingValidator
 
 logger = logging.getLogger("prepare_assignment")

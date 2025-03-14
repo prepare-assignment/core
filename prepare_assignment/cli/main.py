@@ -8,8 +8,10 @@ from prepare_assignment.cli.tasks import app as tasks_app
 from prepare_assignment.core.main import prepare
 from prepare_assignment.data.config import GitMode
 from prepare_assignment.data.constants import CONFIG
+from prepare_assignment.utils.config import load_config
 
-app = typer.Typer(invoke_without_command=True)
+load_config()
+app = typer.Typer(invoke_without_command=False)
 app.add_typer(task_app, name="task")
 app.add_typer(tasks_app, name="tasks")
 
@@ -23,22 +25,22 @@ def run(
     git: Annotated[
         GitMode,
         typer.Option(case_sensitive=False, help="Clone mode for git, options are 'ssh' (default) or 'https'")
-    ] = GitMode.ssh,
+    ] = CONFIG.core.git_mode,
     debug: Annotated[
         int,
         typer.Option("--debug", "-d", count=True, help="increase debug verbosity for prepare assignment")
-    ] = 0,
+    ] = CONFIG.core.debug,
     verbose: Annotated[
         int,
         typer.Option("--verbose", "-v", count=True, help="increase task output verbosity")
-    ] = 0
+    ] = CONFIG.core.verbose
 ):
     """
     Parse 'prepare_assignment.y(a)ml' and execute all jobs
     """
-    CONFIG.DEBUG = debug  # type: ignore
-    CONFIG.GIT_MODE = git # type: ignore
-    CONFIG.VERBOSITY = verbose  # type: ignore
+    CONFIG.core.debug = debug  # type: ignore
+    CONFIG.core.git_mode = git # type: ignore
+    CONFIG.core.verbose = verbose  # type: ignore
 
     prepare(file_name)
 

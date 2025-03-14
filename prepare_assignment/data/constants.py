@@ -7,7 +7,7 @@ from typing import Final, Dict, Type, List
 
 from ruamel.yaml import YAML
 
-from prepare_assignment.data.config import Config
+from prepare_assignment.data.config import Config, Core
 from prepare_assignment.utils.executables import get_bash_path
 
 TYPE_MAPPING: Final[Dict[str, Type]] = {
@@ -31,7 +31,7 @@ SUB_REGEX: Final[re.Pattern] = re.compile("|".join(SUBSTITUTIONS))
 
 LOG_LEVEL_TRACE: Final[int] = logging.DEBUG - 5
 
-CONFIG: Config = Config()
+CONFIG: Config = Config(Core())
 
 BASH_EXECUTABLE: Final[str] = get_bash_path()
 
