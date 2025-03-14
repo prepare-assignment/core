@@ -61,6 +61,19 @@ jobs:
 
 For people familiar with GitHub Actions this should look very familiar. We have jobs that indicate what should happen to prepare an assignment. The tasks are defined in their own repositories, if the `uses` tag doesn't have a username/organization, it will default to `prepare-assignment`. So for example the `remove` task uses the following repository: [prepare-assignment/remove](https://github.com/prepare-assignment/remove)
 
+## Config file
+
+It is possible to specify global options in a config file. The location of the config file can be found by running `prepare` without any commands.
+
+The following settings are available:
+
+```yml
+core:
+  git-mode: "ssh|https"
+  verbose: int
+  debug: int
+```
+
 ## Tasks
 
 There are three different kind of tasks available:
