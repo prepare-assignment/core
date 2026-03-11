@@ -225,6 +225,22 @@ def test_set_env_not_set_expression_skips_task(mocker: MockerFixture) -> None:
     assert mock.call_count == 0
 
 
+def test_run_task_set_env(mocker: MockerFixture) -> None:
+    """Env var written by a run: task via set-env appears in the next task's subprocess environment."""
+    yaml_run_set_env = dict(name='Test', jobs={'prepare': [
+        {'name': 'setter', 'run': 'echo something'},
+        {'name': 'reader', 'uses': 'remove', 'id': 'reader',
+         'with': {'input': ['out'], 'force': True, 'recursive': True}},
+    ]})
+    mocker.patch("prepare_assignment.core.runner.tasks_logger")
+    mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
+    factory = _make_popen_factory([[_SET_ENV_LINE], []])
+    mock.side_effect = factory
+    run(Prepare.of(yaml_run_set_env), mapping)
+    assert mock.call_count == 2
+    assert factory.captured[1].get("MY_VAR") == "hello"  # type: ignore
+
+
 def test_set_env_inside_composite_propagates_to_next_task(mocker: MockerFixture) -> None:
     """Env var set inside a composite subtask is visible to subsequent top-level tasks."""
     mocker.patch("prepare_assignment.core.runner.tasks_logger")

@@ -111,3 +111,11 @@ def test_handle_set_env_non_string_value() -> None:
     with pytest.raises(AssertionError) as exc:
         handle_set_env(env, ["MY_VAR", json.dumps(42)])
     assert "string" in str(exc.value)
+
+
+def test_handle_set_output_no_task_definition_is_ignored(caplog: pytest.LogCaptureFixture) -> None:
+    shell_env = JobEnvironment(environment={}, outputs={}, inputs={})
+    with caplog.at_level(logging.WARNING):
+        handle_set_output(shell_env, ["test", json.dumps({"test": "value"})])
+    assert "shell" in caplog.text.lower() or "not supported" in caplog.text.lower()
+    assert shell_env.outputs == {}
