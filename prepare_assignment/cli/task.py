@@ -50,7 +50,7 @@ def display_update(
         update(task, recursive)
     except Exception as e:
         logger.exception(e)
-        typer.Abort()
+        raise typer.Abort()
 
 
 @app.command("add")
