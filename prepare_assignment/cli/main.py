@@ -57,5 +57,8 @@ def run(
     CONFIG.core.git_mode = git # type: ignore
     CONFIG.core.verbose = verbose  # type: ignore
 
-    prepare(file_name)
+    try:
+        prepare(file_name)
+    except Exception:
+        raise typer.Exit(code=1)
 

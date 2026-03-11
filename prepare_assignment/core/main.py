@@ -9,7 +9,7 @@ from prepare_assignment.core.preparer import prepare_tasks
 from prepare_assignment.core.runner import run
 from prepare_assignment.core.validator import validate_prepare
 from prepare_assignment.data.constants import CONFIG
-from prepare_assignment.data.errors import PrepareTaskError, PrepareError
+from prepare_assignment.data.errors import PrepareTaskError, PrepareError, TaskExecutionError
 from prepare_assignment.data.prepare import Prepare
 from prepare_assignment.utils.logger import add_logging_level, set_logger_level
 from prepare_assignment.utils.yml_loader import YAML_LOADER
@@ -69,11 +69,16 @@ def prepare(file_name: Optional[str]) -> None:
 
         # Execute
         run(prepare, mapping)
+    except TaskExecutionError as e:
+        logger.error(e.message)
+        raise
     except PrepareTaskError as PE:
         logger.error(PE.message)
         if isinstance(PE.cause, PrepareError):
             logger.error(PE.cause.message)
         else:
             logger.error(str(PE.cause))
+        raise
     except Exception as e:
         logger.error(str(e))
+        raise

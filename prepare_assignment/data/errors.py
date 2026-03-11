@@ -24,3 +24,10 @@ class PrepareTaskError(PrepareError):
         super().__init__(message)
         self.message = message
         self.cause = cause
+
+
+class TaskExecutionError(PrepareError):
+
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message
