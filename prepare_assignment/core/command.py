@@ -33,11 +33,11 @@ def handle_set_output(environment: JobEnvironment, params: List[str]) -> None:
         definition = environment.current_task_definition.outputs.get(key, None)  # type: ignore
         if definition is None:
             logger.warning(f"Trying to set output '{key}', but is not defined in task. Skipping for now.")
-            break
+            continue
         expected_type = TYPE_MAPPING.get(definition.type, None)
         if expected_type is None or not isinstance(value, expected_type):
             logger.warning(f"Output '{key}' is of type '{type(value)}', but expected '{definition.type}'")
-            break
+            continue
         environment.outputs[environment.current_task.key][key] = value  # type: ignore
 
 
