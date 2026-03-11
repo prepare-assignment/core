@@ -18,6 +18,7 @@ dependencies = [
     "multipledispatch>=1.0.0",
     "dacite>=1.9.2",
     "packaging>=24.0",
+    "simpleeval>=1.0.0",
 ]
 
 [project.scripts]
@@ -41,4 +42,8 @@ warn_return_any = true
 
 [[tool.mypy.overrides]]
 module = "treelib,ruamel,virtualenv"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "simpleeval"
 ignore_missing_imports = true

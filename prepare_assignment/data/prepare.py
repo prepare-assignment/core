@@ -14,6 +14,7 @@ TaskInput = Union[str, float, int, list]
 class Task(ABC):
     name: str
     id: Optional[str]
+    if_: Optional[str]
 
     @property
     @abstractmethod
@@ -41,7 +42,8 @@ class RunTask(Task):
         return cls(
             name=yaml["name"],
             run=yaml["run"],
-            id=yaml.get("id", None)
+            id=yaml.get("id", None),
+            if_=yaml.get("if", None)
         )
 
     @property
@@ -60,7 +62,8 @@ class UsesTask(Task):
             name=yaml["name"],
             uses=yaml["uses"],
             with_=yaml.get("with", {}),
-            id=yaml.get("id", None)
+            id=yaml.get("id", None),
+            if_=yaml.get("if", None)
         )
 
     @property

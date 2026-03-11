@@ -10,6 +10,7 @@ from typing import Dict
 from prepare_toolbox.command import DEMARCATION
 
 from prepare_assignment.core.command import COMMAND_MAPPING
+from prepare_assignment.core.expression import evaluate_condition
 from prepare_assignment.core.subsituter import substitute_all, __substitute
 from prepare_assignment.data.task_definition import TaskDefinition, PythonTaskDefinition
 from prepare_assignment.data.constants import BASH_EXECUTABLE
@@ -110,8 +111,7 @@ def __handle_task(mapping: Dict[str, TaskDefinition],
         task_definition = mapping.get(str(task_properties))
         substitute_all(task.with_, environment)  # type: ignore
         if task_definition.is_composite:  # type: ignore
-            sub_env = environment.environment.copy()
-            sub_environment = JobEnvironment(sub_env, outputs={}, inputs=task.with_)  # type: ignore
+            sub_environment = JobEnvironment(environment.environment, outputs={}, inputs=task.with_)  # type: ignore
             for subtask in task_definition.tasks:  # type: ignore
                 subtask = copy.deepcopy(subtask)
                 subtask = Task.of(subtask)
@@ -130,6 +130,19 @@ def run(prepare: Prepare, mapping: Dict[str, TaskDefinition]) -> None:
         env = os.environ.copy()
         step_env = JobEnvironment(env, {}, {})
         for task in tasks:
-            __handle_task(mapping, task, step_env)
+            if task.if_ is None:
+                if step_env.job_failed:
+                    logger.debug(f"Skipping task '{task.name}' (previous task failed)")
+                    continue
+            elif not evaluate_condition(task.if_, step_env):
+                logger.debug(f"Skipping task '{task.name}' (if condition is false)")
+                continue
+            try:
+                __handle_task(mapping, task, step_env)
+            except TaskExecutionError as e:
+                logger.error(str(e))
+                step_env.job_failed = True
+        if step_env.job_failed:
+            raise TaskExecutionError(f"Job '{job}' failed")
 
     logger.debug("✓ Prepared :)")

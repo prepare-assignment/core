@@ -738,6 +738,7 @@ dependencies = [
     { name = "packaging" },
     { name = "prepare-toolbox" },
     { name = "ruamel-yaml" },
+    { name = "simpleeval" },
     { name = "treelib" },
     { name = "typer" },
     { name = "virtualenv" },
@@ -763,6 +764,7 @@ requires-dist = [
     { name = "packaging", specifier = ">=24.0" },
     { name = "prepare-toolbox", specifier = "==0.4.0" },
     { name = "ruamel-yaml", specifier = ">=0.18.5" },
+    { name = "simpleeval", specifier = ">=1.0.0" },
     { name = "treelib", specifier = ">=1.7.0" },
     { name = "typer", specifier = "==0.17.3" },
     { name = "virtualenv", specifier = ">=20.25.0" },
@@ -1238,6 +1240,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/58/15/8b3609fd3830ef7b27b655beb4b4e9c62313a4e8da8c676e142cc210d58e/shellingham-1.5.4.tar.gz", hash = "sha256:8dbca0739d487e5bd35ab3ca4b36e11c4078f3a234bfce294b0a0291363404de", size = 10310, upload-time = "2023-10-24T04:13:40.426Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e0/f9/0595336914c5619e5f28a1fb793285925a8cd4b432c9da0a987836c7f822/shellingham-1.5.4-py2.py3-none-any.whl", hash = "sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686", size = 9755, upload-time = "2023-10-24T04:13:38.866Z" },
+]
+
+[[package]]
+name = "simpleeval"
+version = "1.0.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/fd/d6/c25276f8aafd69172852a0f3564cf71b4339bae88d2609ee0843fb1eb6f7/simpleeval-1.0.4.tar.gz", hash = "sha256:32df6dfd5ca09212a7d8b45625b7a2b6aba697ad061a7b0f30938d7d158227fe", size = 37046, upload-time = "2026-03-11T07:40:38.666Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3a/bf/3b1df358e83606ab12fae5861e759ae18084599cfaa9c828b6f8c7cbef03/simpleeval-1.0.4-py3-none-any.whl", hash = "sha256:380318357214f4abb98a0527bd598417707e5416ea13d4b67debf3f67c506c22", size = 17249, upload-time = "2026-03-11T07:40:36.543Z" },
 ]
 
 [[package]]

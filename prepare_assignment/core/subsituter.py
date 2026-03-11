@@ -2,25 +2,16 @@ import json
 import logging
 from typing import Dict, Any, Union, List
 
-from prepare_assignment.data.constants import HAS_SUB_REGEX, SUB_REGEX
+from simpleeval import InvalidExpression
+
+from prepare_assignment.core.expression import evaluate
+from prepare_assignment.data.constants import HAS_SUB_REGEX
 from prepare_assignment.data.job_environment import JobEnvironment
 
 tasks_logger = logging.getLogger("tasks")
 
 
-def __to_string(value: Any) -> str:
-    """
-    Convert a value to string for substitution.
-    We assume we only have the types that are valid in our yaml files, for more info see the schemas.
-    The following conversions happen:
-    - string -> keep as is
-    - int, float, bool -> use built in toString
-    - list -> 'json.dumps'
-
-
-    :param value: the value to convert
-    :return: the value as a string
-    """
+def _to_string(value: Any) -> str:
     if isinstance(value, str):
         return value
     if isinstance(value, (int, float, bool)):
@@ -30,70 +21,61 @@ def __to_string(value: Any) -> str:
 
 def __substitute(value: str, environment: JobEnvironment, is_list: bool = False) -> Union[str, List[str]]:
     """
-    Substitute commands in a string with the matching values from the environment.
-    ${{ inputs.<name> }} -> replace with the matching input
-    ${{ tasks.<task>.outputs.<name>}} -> replace with the matching output of the correct task
+    Substitute ${{ }} expressions in a string with evaluated results.
 
     :param value: the string to substitute on
-    :param environment: the environment to take the values from
-    :return: the substituted string, or the original in case there is no command present
+    :param environment: the environment to evaluate expressions against
+    :param is_list: if True and the entire value is a single expression yielding a list, return the list
+    :return: the substituted string, or the typed result if the whole string is one expression
     """
-    # Find all ${{ }}
-    substitutions = []
-    for expression in HAS_SUB_REGEX.finditer(value):
-        replacement = {"start": expression.start("exp"), "end": expression.end("exp"), "sub": ""}
-        substitutions.append(replacement)
-        # See what command substitution we need: "inputs", "outputs"
-        for sub in SUB_REGEX.finditer(expression.group("content")):
-            # lastgroup contains the name of the matched group
-            sub_type = sub.lastgroup
-            substitution = None
-            if sub_type == "inputs":
-                substitution_name = sub.group(sub_type)
-                substitution = environment.inputs.get(substitution_name, None)
-            elif sub_type == "outputs":
-                step = sub.group("step")
-                output = sub.group("output")
-                substitution = environment.outputs.get(step, {}).get(output, None)
-            if substitution is None:
-                tasks_logger.warning(f"Cannot substitute '{sub.string}'")
-                continue
-            # TODO: check the type
-            if is_list and isinstance(substitution, list) and replacement["end"] - replacement["start"] == len(value):  # type: ignore
-                return substitution
-            replacement["sub"] = __to_string(substitution)
-
-    if len(substitutions) == 0:
+    blocks = list(HAS_SUB_REGEX.finditer(value))
+    if not blocks:
         return value
 
-    substitutions.append({
-        "start": substitutions[-1]["end"],
-        "end": len(value),
-        "sub": value[substitutions[-1]["end"]:]  # type: ignore
-    })
-    previous = 0
-    result = ""
-    for sub in substitutions: # type: ignore
-        result += value[previous:sub["start"]] + sub["sub"] # type: ignore
-        previous = sub["end"] # type: ignore
-    return result
+    # If the entire value is exactly one ${{ }} block, return the typed result directly
+    if len(blocks) == 1 and blocks[0].group("exp") == value.strip():
+        content = blocks[0].group("content")
+        try:
+            result = evaluate(content, environment)
+        except (InvalidExpression, Exception):
+            tasks_logger.warning(f"Cannot evaluate expression '{content}'")
+            return ""
+        if is_list and isinstance(result, list):
+            return result
+        return _to_string(result)
+
+    # Mixed string: interpolate each block as a string
+    result_str = value
+    offset = 0
+    for block in blocks:
+        content = block.group("content")
+        try:
+            replacement = evaluate(content, environment)
+            repl_str = _to_string(replacement)
+        except (InvalidExpression, Exception):
+            tasks_logger.warning(f"Cannot evaluate expression '{content}'")
+            repl_str = ""
+        start = block.start("exp") + offset
+        end = block.end("exp") + offset
+        result_str = result_str[:start] + repl_str + result_str[end:]
+        offset += len(repl_str) - (block.end("exp") - block.start("exp"))
+    return result_str
 
 
 def substitute_all(values: Dict[str, Any], environment: JobEnvironment) -> None:
     """
-    Substitute (in-place) all commands with the matching values.
+    Substitute (in-place) all ${{ }} expressions with the matching values.
 
-    :param values: the inputs to check for commands and substitute
+    :param values: the inputs to check for expressions and substitute
     :param environment: the environment containing the substitutions
     :return: None
     """
     for key, value in values.items():
-        # For now, we only support it on string type
         if isinstance(value, str):
             values[key] = __substitute(value, environment)  # type: ignore
         elif isinstance(value, list) and len(value) > 0 and isinstance(value[0], str):
             replacement = []
-            for idx, val in enumerate(value):
+            for val in value:
                 substituted = __substitute(val, environment, is_list=True)
                 if isinstance(substituted, list):
                     replacement.extend(substituted)
