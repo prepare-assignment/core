@@ -82,7 +82,7 @@ def __build_json_schema(props: TaskProperties, task: TaskDefinition) -> str:
 
 def __task_install_dependencies(task_path: Path) -> None:
     if sys.platform == "win32":
-        venv_path = os.path.join(task_path, "venv", "scripts", "python.exe")
+        venv_path = os.path.join(task_path, "venv", "Scripts", "python.exe")
     else:
         venv_path = os.path.join(task_path, "venv", "bin", "python")
     repo_path = os.path.join(task_path, "repo")
@@ -104,7 +104,7 @@ def __task_install_dependencies(task_path: Path) -> None:
         args = [venv_path] + f"-m pip install .".split()
         result = subprocess.run(args, capture_output=True, cwd=repo_path)
 
-    if result is not None and result.returncode == 1:
+    if result is not None and result.returncode != 0:
         log_path = os.path.join(cache_path, "logs")
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         file = os.path.join(log_path, f'{timestamp}-dependencies.log')
@@ -159,7 +159,7 @@ def __prepare_task(props: TaskProperties) -> ValidableTask:
         shutil.rmtree(props.task_path)
         # We need to raise an exception, because if it was part of a composite task,
         # then that task is also not valid
-        raise PrepareTaskError(f"Unable to prepare task '{str(props)}'", e)
+        raise PrepareTaskError(f"Unable to prepare task '{str(props)}'", e) from e
 
 
 def __prepare_tasks(tasks: List[Any], parsed: Optional[Dict[str, ValidableTask]] = None, *,

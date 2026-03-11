@@ -1,7 +1,6 @@
 import logging
 import os.path
 import shutil
-import sys
 from typing import Set
 
 import typer
@@ -78,8 +77,8 @@ def ls() -> None:
 def info(task: str) -> None:
     props = TaskProperties.of(task)
     if not os.path.isfile(props.definition_path):
-        print(f"Path '{props.definition_path}' doesn't exist", file=sys.stderr)
-        typer.Abort()
+        logger.error(f"Path '{props.definition_path}' doesn't exist")
+        raise typer.Abort()
     yaml = YAML_LOADER.load(props.definition_path)
     task_def = TaskDefinition.of(yaml, props.definition_path)
     print(task_def)

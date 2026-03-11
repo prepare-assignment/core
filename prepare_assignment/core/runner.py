@@ -72,7 +72,7 @@ def __execute_task(environment: JobEnvironment) -> None:
         for line in process.stdout:
             __process_output_line(line, environment)
     if process.returncode != 0:
-        print("Error code: 1")  # TODO: What to do if process fails?
+        logger.error(f"Task '{environment.current_task.name}' exited with code {process.returncode}")  # type: ignore
 
 
 def __execute_shell_command(command: str, env: Dict[str, str]) -> None:
@@ -91,6 +91,8 @@ def __execute_shell_command(command: str, env: Dict[str, str]) -> None:
             return
         for line in process.stdout:
             tasks_logger.trace(line)  # type: ignore
+    if process.returncode != 0:
+        logger.error(f"Shell command exited with code {process.returncode}: {command}")
 
 
 def __handle_task(mapping: Dict[str, TaskDefinition],
