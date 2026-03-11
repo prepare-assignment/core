@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -8,8 +9,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-from git import Repo
+from git import Repo, Git
 from importlib_resources import files
+from packaging.version import Version, InvalidVersion
 from virtualenv import cli_run
 
 from prepare_assignment.data.constants import CONFIG
@@ -31,6 +33,64 @@ template_file = files().joinpath('../schemas/task.schema.json_template')
 template: str = template_file.read_text()
 
 
+_COMMIT_HASH_RE = re.compile(r'^[0-9a-f]{40}$')
+
+
+def __resolve_version(git_url: str, version: str) -> Optional[str]:
+    """
+    Resolve a version string to a concrete git ref by inspecting remote tags.
+
+    - "main"    → "main" (latest commit on main branch)
+    - "latest"  → highest semver tag; None if no tags exist (falls back to default branch)
+    - "v1.0.0"  → exact tag if it exists, otherwise treated as prefix
+    - "v1"      → highest semver tag whose name starts with "v1"
+    - 40-char hex → passed through as-is (commit hash, handled separately)
+    - other     → passed through as-is
+    """
+    if version == "main":
+        return "main"
+
+    if _COMMIT_HASH_RE.match(version):
+        return version
+
+    raw = Git().ls_remote("--tags", git_url)
+    all_tags: List[str] = []
+    for line in raw.splitlines():
+        parts = line.split("\t")
+        if len(parts) != 2:
+            continue
+        ref = parts[1]
+        if ref.endswith("^{}"):
+            continue
+        all_tags.append(ref.replace("refs/tags/", ""))
+
+    def as_version(tag: str) -> Optional[Version]:
+        try:
+            return Version(tag)
+        except InvalidVersion:
+            return None
+
+    if version == "latest":
+        versioned = [(as_version(t), t) for t in all_tags]
+        valid = [(v, t) for v, t in versioned if v is not None]
+        if valid:
+            return max(valid, key=lambda x: x[0])[1]
+        return None  # no tags → clone default branch HEAD
+
+    # Exact tag match
+    if version in all_tags:
+        return version
+
+    # Prefix match (e.g. "v1" → "v1.1.2")
+    prefix_matches = [(as_version(t), t) for t in all_tags if t.startswith(version)]
+    valid_prefix = [(v, t) for v, t in prefix_matches if v is not None]
+    if valid_prefix:
+        return max(valid_prefix, key=lambda x: x[0])[1]
+
+    # Fallback (branch name, partial ref, etc.)
+    return version
+
+
 def __download_task(props: TaskProperties) -> Path:
     """
     Download the task (using git clone)
@@ -39,16 +99,24 @@ def __download_task(props: TaskProperties) -> Path:
     :returns Path: the path where the repo is checked out
     """
     props.repo_path.mkdir(parents=True, exist_ok=True)
-    git_url: str
     if CONFIG.core.git_mode == "https":
         git_url = f"https://github.com/{props.organization}/{props.name}.git"
     else:
         git_url = f"git@github.com:{props.organization}/{props.name}.git"
-    logger.debug(f"Cloning repository: {git_url}")
-    with Repo.clone_from(git_url, props.repo_path) as repo:
-        if props.version != "latest":
-            logger.debug(f"Checking out correct version of repository: {props.version}")
-            repo.git.checkout(props.version)
+
+    resolved = __resolve_version(git_url, props.version)
+    logger.debug(f"Cloning repository: {git_url} at ref '{resolved or 'HEAD'}'")
+
+    if resolved is not None and _COMMIT_HASH_RE.match(resolved):
+        # Shallow clones cannot reach arbitrary commits; do a full clone then checkout
+        with Repo.clone_from(git_url, props.repo_path) as repo:
+            repo.git.checkout(resolved)
+    else:
+        clone_kwargs: Dict[str, Any] = {"depth": 1}
+        if resolved is not None:
+            clone_kwargs["branch"] = resolved
+        Repo.clone_from(git_url, props.repo_path, **clone_kwargs)
+
     return props.repo_path
 
 
