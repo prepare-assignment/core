@@ -79,7 +79,7 @@ def __execute_task(environment: JobEnvironment) -> None:
         )
 
 
-def __execute_shell_command(command: str, env: Dict[str, str]) -> None:
+def __execute_shell_command(command: str, environment: JobEnvironment) -> None:
     logger.debug(f"Executing run '{command}'")  # type: ignore
     args = shlex.split(f"-c {shlex.quote(command)}")
     args.insert(0, BASH_EXECUTABLE)
@@ -89,12 +89,12 @@ def __execute_shell_command(command: str, env: Dict[str, str]) -> None:
         stderr=subprocess.STDOUT,
         bufsize=1,
         universal_newlines=True,
-        env=env
+        env=environment.environment
     ) as process:
         if process.stdout is None:
             return
         for line in process.stdout:
-            tasks_logger.trace(line)  # type: ignore
+            __process_output_line(line, environment)
     if process.returncode != 0:
         raise TaskExecutionError(f"Shell command exited with code {process.returncode}: {command}")
 
@@ -105,7 +105,7 @@ def __handle_task(mapping: Dict[str, TaskDefinition],
     # Check what kind of task it is
     if task.is_run:
         command = __substitute(task.run, environment)  # type: ignore
-        __execute_shell_command(command, environment.environment)  # type: ignore
+        __execute_shell_command(command, environment)  # type: ignore
     else:
         task_properties = TaskProperties.of(task.uses)  # type: ignore
         task_definition = mapping.get(str(task_properties))

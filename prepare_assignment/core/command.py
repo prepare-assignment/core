@@ -21,6 +21,9 @@ def handle_set_failed(environment: JobEnvironment, params: List[str]) -> None:
 
 
 def handle_set_output(environment: JobEnvironment, params: List[str]) -> None:
+    if environment.current_task_definition is None:
+        logger.warning("'set-output' is not supported for shell commands and will be ignored")
+        return
     if len(params) < 2:
         raise AssertionError(f"Missing required params for 'set_failed'")
     try:

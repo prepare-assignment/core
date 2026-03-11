@@ -10,7 +10,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from prepare_assignment.core.preparer import prepare_tasks, __task_install_dependencies
-from prepare_assignment.data.errors import DependencyError
+from prepare_assignment.data.errors import DependencyError, PrepareTaskError
 from virtualenv import cli_run  # type: ignore
 
 from prepare_assignment.utils.paths import get_cache_path
@@ -124,6 +124,28 @@ def test_prepare_composite_task(mocker: MockerFixture) -> None:
     assert len(mapping) == 2
     # Should load from disk, not clone again
     assert spy.call_count == 2
+
+
+def test_prepare_task_main_outside_repo(mocker: MockerFixture) -> None:
+    task_yaml_evil = {
+        'id': 'evil',
+        'name': 'Evil task',
+        'description': 'Evil',
+        'runs': {
+            'using': 'python',
+            'main': '../../evil.py'
+        }
+    }
+    __clean_cache()
+    mocker.patch("prepare_assignment.core.preparer.__download_task")
+    mocker.patch("prepare_assignment.core.preparer.validate_task_definition", return_value=task_yaml_evil)
+    mocker.patch("prepare_assignment.core.preparer.validate_default_values")
+    mocker.patch("prepare_assignment.core.preparer.shutil.rmtree")
+    prepare = {'prepare': [{'name': 'evil task', 'uses': 'evil', 'with': {}}]}
+    with pytest.raises(PrepareTaskError) as exc_info:
+        prepare_tasks("prepare.yml", prepare)
+    assert isinstance(exc_info.value.cause, Exception)
+    assert "outside" in str(exc_info.value.cause).lower() or "within" in str(exc_info.value.cause).lower()
 
 
 def test_install_wrong_dependencies() -> None:
