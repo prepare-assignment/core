@@ -111,8 +111,7 @@ def __handle_task(mapping: Dict[str, TaskDefinition],
         task_definition = mapping.get(str(task_properties))
         substitute_all(task.with_, environment)  # type: ignore
         if task_definition.is_composite:  # type: ignore
-            sub_env = environment.environment.copy()
-            sub_environment = JobEnvironment(sub_env, outputs={}, inputs=task.with_)  # type: ignore
+            sub_environment = JobEnvironment(environment.environment, outputs={}, inputs=task.with_)  # type: ignore
             for subtask in task_definition.tasks:  # type: ignore
                 subtask = copy.deepcopy(subtask)
                 subtask = Task.of(subtask)

@@ -58,7 +58,7 @@ def _build_names(environment: JobEnvironment) -> Dict[str, Any]:
     }
     return {
         "inputs": _Namespace(environment.inputs),
-        "env": _Namespace(environment.env_vars),
+        "env": _Namespace(environment.environment),
         "tasks": _Namespace(tasks_ctx),
     }
 

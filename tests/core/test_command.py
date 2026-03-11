@@ -93,7 +93,6 @@ def test_handle_set_output_success() -> None:
 def test_handle_set_env_success() -> None:
     fresh_env = JobEnvironment(environment={}, outputs={}, inputs={})
     handle_set_env(fresh_env, ["MY_VAR", json.dumps("hello")])
-    assert fresh_env.env_vars["MY_VAR"] == "hello"
     assert fresh_env.environment["MY_VAR"] == "hello"
 
 

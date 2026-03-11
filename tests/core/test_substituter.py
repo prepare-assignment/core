@@ -75,7 +75,7 @@ def test_invalid_substitute(caplog: pytest.LogCaptureFixture) -> None:
 
 def test_substitute_env_var() -> None:
     values = {'test': '${{ env.MY_VAR }}'}
-    env = JobEnvironment(inputs={}, outputs={}, environment={}, env_vars={'MY_VAR': 'secret'})
+    env = JobEnvironment(inputs={}, outputs={}, environment={'MY_VAR': 'secret'})
     substitute_all(values, env)
     assert values["test"] == 'secret'
 

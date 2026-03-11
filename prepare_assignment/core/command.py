@@ -75,7 +75,6 @@ def handle_set_env(environment: JobEnvironment, params: List[str]) -> None:
         raise AssertionError(f"'set-env' expects a JSON-encoded value as second param")
     if not isinstance(value, str):
         raise AssertionError(f"'set-env' expects a string value")
-    environment.env_vars[name] = value
     environment.environment[name] = value
 
 

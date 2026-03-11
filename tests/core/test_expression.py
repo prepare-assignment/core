@@ -5,7 +5,7 @@ from prepare_assignment.data.job_environment import JobEnvironment
 
 
 def env(**kwargs) -> JobEnvironment:  # type: ignore
-    defaults = dict(environment={}, outputs={}, inputs={}, env_vars={})
+    defaults = dict(environment={}, outputs={}, inputs={})
     defaults.update(kwargs)
     return JobEnvironment(**defaults)  # type: ignore
 
@@ -23,7 +23,7 @@ def test_evaluate_input_wrapped() -> None:
 
 
 def test_evaluate_env_var() -> None:
-    e = env(env_vars={"MY_VAR": "hello"})
+    e = env(environment={"MY_VAR": "hello"})
     assert evaluate("env.MY_VAR", e) == "hello"
 
 
