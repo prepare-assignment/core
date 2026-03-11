@@ -208,6 +208,8 @@ def __prepare_task(props: TaskProperties) -> ValidableTask:
         validate_default_values(task)
         if isinstance(task, PythonTaskDefinition):
             main_path = os.path.join(props.repo_path, Path(task.main))  # type: ignore
+            if not Path(main_path).resolve().is_relative_to(props.repo_path.resolve()):
+                raise ValidationError(f"Main path '{task.main}' must be within the repository")
             if not os.path.isfile(main_path):
                 error_msg = f"Main file '{task.main}' does not exist for task '{task.name}'"  # type: ignore
                 raise ValidationError(error_msg)
