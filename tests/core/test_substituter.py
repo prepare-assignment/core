@@ -71,3 +71,31 @@ def test_invalid_substitute(caplog: pytest.LogCaptureFixture) -> None:
         substitute_all(values, env)
     assert values["test"] == ''
     assert 'tasks.step1.outputs.test' in caplog.text
+
+
+def test_substitute_env_var() -> None:
+    values = {'test': '${{ env.MY_VAR }}'}
+    env = JobEnvironment(inputs={}, outputs={}, environment={}, env_vars={'MY_VAR': 'secret'})
+    substitute_all(values, env)
+    assert values["test"] == 'secret'
+
+
+def test_substitute_expression_comparison() -> None:
+    values = {'test': '${{ inputs.x == 5 }}'}
+    env = JobEnvironment(inputs={'x': 5}, outputs={}, environment={})
+    substitute_all(values, env)
+    assert values["test"] == 'True'
+
+
+def test_substitute_hyphenated_output() -> None:
+    values = {'test': '${{ tasks.step1.outputs.stripped-files }}'}
+    env = JobEnvironment(inputs={}, outputs={'step1': {'stripped-files': ['a.java']}}, environment={})
+    substitute_all(values, env)
+    assert values["test"] == '["a.java"]'
+
+
+def test_substitute_mixed_string() -> None:
+    values = {'test': 'hello ${{ inputs.name }}!'}
+    env = JobEnvironment(inputs={'name': 'world'}, outputs={}, environment={})
+    substitute_all(values, env)
+    assert values["test"] == 'hello world!'

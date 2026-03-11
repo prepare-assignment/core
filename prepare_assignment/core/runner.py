@@ -10,6 +10,7 @@ from typing import Dict
 from prepare_toolbox.command import DEMARCATION
 
 from prepare_assignment.core.command import COMMAND_MAPPING
+from prepare_assignment.core.expression import evaluate_condition
 from prepare_assignment.core.subsituter import substitute_all, __substitute
 from prepare_assignment.data.task_definition import TaskDefinition, PythonTaskDefinition
 from prepare_assignment.data.constants import BASH_EXECUTABLE
@@ -130,6 +131,9 @@ def run(prepare: Prepare, mapping: Dict[str, TaskDefinition]) -> None:
         env = os.environ.copy()
         step_env = JobEnvironment(env, {}, {})
         for task in tasks:
+            if task.if_ is not None and not evaluate_condition(task.if_, step_env):
+                logger.debug(f"Skipping task '{task.name}' (if condition is false)")
+                continue
             __handle_task(mapping, task, step_env)
 
     logger.debug("✓ Prepared :)")

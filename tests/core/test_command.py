@@ -5,7 +5,7 @@ from typing import Callable, List
 import pytest
 
 from prepare_assignment.core.command import handle_set_failed, handle_debug, handle_info, handle_warning, \
-    handle_error, handle_set_output
+    handle_error, handle_set_output, handle_set_env
 from prepare_assignment.data.task_definition import PythonTaskDefinition, TaskOutputDefinition
 from prepare_assignment.data.prepare import UsesTask
 from prepare_assignment.data.job_environment import JobEnvironment
@@ -18,7 +18,7 @@ task_definition = PythonTaskDefinition(outputs={'test': output},
                                        name="test",
                                        path="path",
                                        main="main.py")
-task = UsesTask(name="test", id="id", with_={}, uses="test")
+task = UsesTask(name="test", id="id", with_={}, uses="test", if_=None)
 env = JobEnvironment(environment={},
                      outputs={'id': {}},
                      inputs={},
@@ -88,3 +88,27 @@ def test_handle_set_output_wrong_type(caplog: pytest.LogCaptureFixture) -> None:
 def test_handle_set_output_success() -> None:
     handle_set_output(env, ["test", json.dumps({"test": "asd"})])
     assert env.outputs['id']['test'] == "asd"
+
+
+def test_handle_set_env_success() -> None:
+    fresh_env = JobEnvironment(environment={}, outputs={}, inputs={})
+    handle_set_env(fresh_env, ["MY_VAR", json.dumps("hello")])
+    assert fresh_env.env_vars["MY_VAR"] == "hello"
+    assert fresh_env.environment["MY_VAR"] == "hello"
+
+
+def test_handle_set_env_missing_params() -> None:
+    with pytest.raises(AssertionError):
+        handle_set_env(env, [])
+
+
+def test_handle_set_env_invalid_json() -> None:
+    with pytest.raises(AssertionError) as exc:
+        handle_set_env(env, ["MY_VAR", "not json"])
+    assert "JSON" in str(exc.value)
+
+
+def test_handle_set_env_non_string_value() -> None:
+    with pytest.raises(AssertionError) as exc:
+        handle_set_env(env, ["MY_VAR", json.dumps(42)])
+    assert "string" in str(exc.value)

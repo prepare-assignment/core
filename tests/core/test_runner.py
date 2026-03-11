@@ -59,3 +59,31 @@ def test_runner_fail(mocker: MockerFixture) -> None:
     with pytest.raises(TaskExecutionError):
         run(prepare, mapping)
     assert mock.call_count == 1
+
+
+def test_runner_if_condition_false_skips_task(mocker: MockerFixture) -> None:
+    """A task with if: False should be skipped (Popen not called for it)."""
+    yaml_with_if = dict(name='Test', jobs={'prepare': [
+        {'name': 'remove', 'uses': 'remove', 'id': 'remove', 'if': 'False',
+         'with': {'input': ['out'], 'force': True, 'recursive': True}},
+    ]})
+    mocker.patch("prepare_assignment.core.runner.tasks_logger")
+    mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
+    mock.side_effect = MockedPopen
+    prepare = Prepare.of(yaml_with_if)
+    run(prepare, mapping)
+    assert mock.call_count == 0
+
+
+def test_runner_if_condition_true_runs_task(mocker: MockerFixture) -> None:
+    """A task with if: True should execute normally."""
+    yaml_with_if = dict(name='Test', jobs={'prepare': [
+        {'name': 'remove', 'uses': 'remove', 'id': 'remove', 'if': 'True',
+         'with': {'input': ['out'], 'force': True, 'recursive': True}},
+    ]})
+    mocker.patch("prepare_assignment.core.runner.tasks_logger")
+    mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
+    mock.side_effect = MockedPopen
+    prepare = Prepare.of(yaml_with_if)
+    run(prepare, mapping)
+    assert mock.call_count == 1

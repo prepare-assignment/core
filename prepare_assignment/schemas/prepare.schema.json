@@ -20,6 +20,12 @@
                     "name": {
                       "type": "string"
                     },
+                    "id": {
+                      "type": "string"
+                    },
+                    "if": {
+                      "type": "string"
+                    },
                     "uses": {
                       "type": "string"
                     }
@@ -30,6 +36,12 @@
                   "type": "object",
                   "properties": {
                     "name": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "if": {
                       "type": "string"
                     },
                     "run": {
