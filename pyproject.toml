@@ -17,6 +17,7 @@ dependencies = [
     "treelib>=1.7.0",
     "multipledispatch>=1.0.0",
     "dacite>=1.9.2",
+    "packaging>=24.0",
 ]
 
 [project.scripts]

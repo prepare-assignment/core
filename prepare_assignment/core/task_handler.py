@@ -44,7 +44,7 @@ def update(task: str, recursive: bool) -> None:
     for dep in dependencies:
         # Only update if version is 'latest'
         # Tags in git are not immutable, but we ignore that for now
-        if dep.version == "latest":
+        if dep.version in ("latest", "main"):
             # Easiest way is to just remove and reinstall
             shutil.rmtree(dep.task_path)
             add(str(dep))
