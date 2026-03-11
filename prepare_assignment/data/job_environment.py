@@ -11,5 +11,6 @@ class JobEnvironment:
     outputs: Dict[str, Any]
     inputs: Dict[str, Any]
     env_vars: Dict[str, str] = field(default_factory=dict)
+    job_failed: bool = False
     current_task_definition: Optional[PythonTaskDefinition] = None
     current_task: Optional[Task] = None

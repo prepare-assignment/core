@@ -75,14 +75,16 @@ def _ends_with(s: str, suffix: str) -> bool:
     return s.endswith(suffix)
 
 
-_FUNCTIONS = {
-    "contains": _contains,
-    "startsWith": _starts_with,
-    "endsWith": _ends_with,
-    "success": lambda: True,
-    "failure": lambda: False,
-    "always": lambda: True,
-}
+def _build_functions(environment: JobEnvironment) -> Dict[str, Any]:
+    return {
+        "contains": _contains,
+        "startsWith": _starts_with,
+        "endsWith": _ends_with,
+        "success": lambda: not environment.job_failed,
+        "failure": lambda: environment.job_failed,
+        "always": lambda: True,
+        "never": lambda: False,
+    }
 
 
 def evaluate(expr: str, environment: JobEnvironment) -> Any:
@@ -97,7 +99,7 @@ def evaluate(expr: str, environment: JobEnvironment) -> Any:
 
     processed = _preprocess(stripped)
     names = _build_names(environment)
-    evaluator = EvalWithCompoundTypes(names=names, functions=_FUNCTIONS)
+    evaluator = EvalWithCompoundTypes(names=names, functions=_build_functions(environment))
     return evaluator.eval(processed)
 
 

@@ -52,10 +52,63 @@ def test_runner(mocker: MockerFixture) -> None:
 
 
 def test_runner_fail(mocker: MockerFixture) -> None:
+    # First task fails; remaining tasks (no if:) are skipped; exception raised at end
     mocker.patch("prepare_assignment.core.runner.tasks_logger")
     mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
     mock.side_effect = MockedPopenFail
     prepare = Prepare.of(yaml)
+    with pytest.raises(TaskExecutionError):
+        run(prepare, mapping)
+    assert mock.call_count == 1
+
+
+def test_runner_fail_always_still_runs(mocker: MockerFixture) -> None:
+    # First task fails; second task has if: always() and should still run
+    yaml_always = dict(name='Test', jobs={'prepare': [
+        {'name': 'remove', 'uses': 'remove', 'id': 'remove',
+         'with': {'input': ['out'], 'force': True, 'recursive': True}},
+        {'name': 'cleanup', 'uses': 'remove', 'id': 'cleanup', 'if': 'always()',
+         'with': {'input': ['out'], 'force': True, 'recursive': True}},
+    ]})
+    mocker.patch("prepare_assignment.core.runner.tasks_logger")
+    mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
+    mock.side_effect = MockedPopenFail
+    prepare = Prepare.of(yaml_always)
+    with pytest.raises(TaskExecutionError):
+        run(prepare, mapping)
+    assert mock.call_count == 2
+
+
+def test_runner_fail_failure_runs(mocker: MockerFixture) -> None:
+    # First task fails; second task has if: failure() and should run
+    yaml_failure = dict(name='Test', jobs={'prepare': [
+        {'name': 'remove', 'uses': 'remove', 'id': 'remove',
+         'with': {'input': ['out'], 'force': True, 'recursive': True}},
+        {'name': 'on-fail', 'uses': 'remove', 'id': 'on-fail', 'if': 'failure()',
+         'with': {'input': ['out'], 'force': True, 'recursive': True}},
+    ]})
+    mocker.patch("prepare_assignment.core.runner.tasks_logger")
+    mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
+    # First call fails, second succeeds
+    mock.side_effect = [MockedPopenFail(None), MockedPopen(None)]
+    prepare = Prepare.of(yaml_failure)
+    with pytest.raises(TaskExecutionError):
+        run(prepare, mapping)
+    assert mock.call_count == 2
+
+
+def test_runner_fail_success_skipped(mocker: MockerFixture) -> None:
+    # First task fails; second task has if: success() and should be skipped
+    yaml_success = dict(name='Test', jobs={'prepare': [
+        {'name': 'remove', 'uses': 'remove', 'id': 'remove',
+         'with': {'input': ['out'], 'force': True, 'recursive': True}},
+        {'name': 'next', 'uses': 'remove', 'id': 'next', 'if': 'success()',
+         'with': {'input': ['out'], 'force': True, 'recursive': True}},
+    ]})
+    mocker.patch("prepare_assignment.core.runner.tasks_logger")
+    mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
+    mock.side_effect = MockedPopenFail
+    prepare = Prepare.of(yaml_success)
     with pytest.raises(TaskExecutionError):
         run(prepare, mapping)
     assert mock.call_count == 1

@@ -94,19 +94,39 @@ def test_evaluate_ends_with() -> None:
     assert evaluate("endsWith(inputs.name, 'world')", e) is True
 
 
-def test_evaluate_success() -> None:
+def test_evaluate_success_when_no_failure() -> None:
     e = env()
     assert evaluate("success()", e) is True
 
 
-def test_evaluate_failure() -> None:
+def test_evaluate_success_when_failed() -> None:
+    e = env(job_failed=True)
+    assert evaluate("success()", e) is False
+
+
+def test_evaluate_failure_when_no_failure() -> None:
     e = env()
     assert evaluate("failure()", e) is False
+
+
+def test_evaluate_failure_when_failed() -> None:
+    e = env(job_failed=True)
+    assert evaluate("failure()", e) is True
 
 
 def test_evaluate_always() -> None:
     e = env()
     assert evaluate("always()", e) is True
+
+
+def test_evaluate_always_when_failed() -> None:
+    e = env(job_failed=True)
+    assert evaluate("always()", e) is True
+
+
+def test_evaluate_never() -> None:
+    e = env()
+    assert evaluate("never()", e) is False
 
 
 def test_evaluate_literal_string() -> None:

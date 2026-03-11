@@ -131,9 +131,19 @@ def run(prepare: Prepare, mapping: Dict[str, TaskDefinition]) -> None:
         env = os.environ.copy()
         step_env = JobEnvironment(env, {}, {})
         for task in tasks:
-            if task.if_ is not None and not evaluate_condition(task.if_, step_env):
+            if task.if_ is None:
+                if step_env.job_failed:
+                    logger.debug(f"Skipping task '{task.name}' (previous task failed)")
+                    continue
+            elif not evaluate_condition(task.if_, step_env):
                 logger.debug(f"Skipping task '{task.name}' (if condition is false)")
                 continue
-            __handle_task(mapping, task, step_env)
+            try:
+                __handle_task(mapping, task, step_env)
+            except TaskExecutionError as e:
+                logger.error(str(e))
+                step_env.job_failed = True
+        if step_env.job_failed:
+            raise TaskExecutionError(f"Job '{job}' failed")
 
     logger.debug("✓ Prepared :)")
