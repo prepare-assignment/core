@@ -65,9 +65,24 @@ def handle_debug(environment: JobEnvironment, params: List[str]) -> None:
     logger.debug(__handle_message(params[0]))
 
 
+def handle_set_env(environment: JobEnvironment, params: List[str]) -> None:
+    if len(params) < 2:
+        raise AssertionError(f"Missing required params for 'set-env'")
+    name = unquote_plus(params[0])
+    try:
+        value = json.loads(params[1])
+    except JSONDecodeError:
+        raise AssertionError(f"'set-env' expects a JSON-encoded value as second param")
+    if not isinstance(value, str):
+        raise AssertionError(f"'set-env' expects a string value")
+    environment.env_vars[name] = value
+    environment.environment[name] = value
+
+
 COMMAND_MAPPING = {
     "set-failed": handle_set_failed,
     "set-output": handle_set_output,
+    "set-env": handle_set_env,
     "error": handle_error,
     "warning": handle_warning,
     "info": handle_info,
