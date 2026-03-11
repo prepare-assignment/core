@@ -1,6 +1,8 @@
+import pytest
 from pytest_mock import MockerFixture
 
 from prepare_assignment.core.runner import run
+from prepare_assignment.data.errors import TaskExecutionError
 from prepare_assignment.data.task_definition import PythonTaskDefinition, TaskInputDefinition, \
     TaskOutputDefinition, CompositeTaskDefinition
 from prepare_assignment.data.prepare import Prepare
@@ -50,10 +52,10 @@ def test_runner(mocker: MockerFixture) -> None:
 
 
 def test_runner_fail(mocker: MockerFixture) -> None:
-    # TODO: update test when we are handling failed command execution
     mocker.patch("prepare_assignment.core.runner.tasks_logger")
     mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
     mock.side_effect = MockedPopenFail
     prepare = Prepare.of(yaml)
-    run(prepare, mapping)
-    assert mock.call_count == 3
+    with pytest.raises(TaskExecutionError):
+        run(prepare, mapping)
+    assert mock.call_count == 1

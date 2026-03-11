@@ -15,6 +15,7 @@ from prepare_assignment.data.task_definition import TaskDefinition, PythonTaskDe
 from prepare_assignment.data.constants import BASH_EXECUTABLE
 from prepare_assignment.data.prepare import Prepare, Task
 from prepare_assignment.data.job_environment import JobEnvironment
+from prepare_assignment.data.errors import TaskExecutionError
 from prepare_assignment.data.task_properties import TaskProperties
 
 # Get the logger
@@ -72,7 +73,9 @@ def __execute_task(environment: JobEnvironment) -> None:
         for line in process.stdout:
             __process_output_line(line, environment)
     if process.returncode != 0:
-        logger.error(f"Task '{environment.current_task.name}' exited with code {process.returncode}")  # type: ignore
+        raise TaskExecutionError(
+            f"Task '{environment.current_task.name}' exited with code {process.returncode}"  # type: ignore
+        )
 
 
 def __execute_shell_command(command: str, env: Dict[str, str]) -> None:
@@ -92,7 +95,7 @@ def __execute_shell_command(command: str, env: Dict[str, str]) -> None:
         for line in process.stdout:
             tasks_logger.trace(line)  # type: ignore
     if process.returncode != 0:
-        logger.error(f"Shell command exited with code {process.returncode}: {command}")
+        raise TaskExecutionError(f"Shell command exited with code {process.returncode}: {command}")
 
 
 def __handle_task(mapping: Dict[str, TaskDefinition],
