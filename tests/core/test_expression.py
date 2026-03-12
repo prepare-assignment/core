@@ -159,3 +159,54 @@ def test_evaluate_condition_invalid_returns_false() -> None:
 def test_evaluate_condition_wrapped() -> None:
     e = env(inputs={"flag": True})
     assert evaluate_condition("${{ inputs.flag }}", e) is True
+
+
+# ── boolean coercion for env vars ─────────────────────────────────────────────
+
+def test_evaluate_env_true_string_coerced_to_bool() -> None:
+    """env var with value "true" is coerced to bool True."""
+    e = env(environment={"release": "true"})
+    assert evaluate_condition("env.release", e) is True
+
+
+def test_evaluate_env_false_string_coerced_to_bool() -> None:
+    """env var with value "false" is coerced to bool False."""
+    e = env(environment={"release": "false"})
+    assert evaluate_condition("env.release", e) is False
+
+
+def test_evaluate_env_true_uppercase_coerced() -> None:
+    """env var with value "True" (Python-style) is also coerced."""
+    e = env(environment={"release": "True"})
+    assert evaluate_condition("env.release", e) is True
+
+
+def test_evaluate_env_bool_equals_true_literal() -> None:
+    """env.release == true (lowercase literal) evaluates correctly."""
+    e = env(environment={"release": "true"})
+    assert evaluate_condition("env.release == true", e) is True
+
+
+def test_evaluate_env_bool_equals_True_literal() -> None:
+    """env.release == True (Python literal) evaluates correctly."""
+    e = env(environment={"release": "true"})
+    assert evaluate_condition("env.release == True", e) is True
+
+
+def test_evaluate_env_false_not_equals_true_literal() -> None:
+    """env.release == true is False when release is "false"."""
+    e = env(environment={"release": "false"})
+    assert evaluate_condition("env.release == true", e) is False
+
+
+def test_evaluate_quoted_true_string_unchanged() -> None:
+    """'true' inside quotes is not rewritten to Python True.
+    For non-boolean env vars the quoted string comparison works as expected.
+    For boolean-coerced env vars use the unquoted literal: env.flag == true."""
+    # Non-boolean env var: 'true' literal is preserved, comparison works normally
+    e = env(environment={"flag": "other"})
+    assert evaluate_condition("env.flag == 'true'", e) is False
+    # Boolean env var is coerced to True (bool); compare with unquoted true, not 'true'
+    e2 = env(environment={"flag": "true"})
+    assert evaluate_condition("env.flag == true", e2) is True
+    assert evaluate_condition("env.flag == 'true'", e2) is False
