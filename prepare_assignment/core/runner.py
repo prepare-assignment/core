@@ -99,6 +99,17 @@ def __execute_shell_command(command: str, environment: JobEnvironment) -> None:
         raise TaskExecutionError(f"Shell command exited with code {process.returncode}: {command}")
 
 
+def __should_skip(task: Task, environment: JobEnvironment) -> bool:
+    if task.if_ is None:
+        if environment.job_failed:
+            logger.debug(f"Skipping task '{task.name}' (previous task failed)")
+            return True
+    elif not evaluate_condition(task.if_, environment):
+        logger.debug(f"Skipping task '{task.name}' (if condition is false)")
+        return True
+    return False
+
+
 def __handle_task(mapping: Dict[str, TaskDefinition],
                   task: Task,
                   environment: JobEnvironment) -> None:
@@ -115,7 +126,15 @@ def __handle_task(mapping: Dict[str, TaskDefinition],
             for subtask in task_definition.tasks:  # type: ignore
                 subtask = copy.deepcopy(subtask)
                 subtask = Task.of(subtask)
-                __handle_task(mapping, subtask, sub_environment)
+                if __should_skip(subtask, sub_environment):
+                    continue
+                try:
+                    __handle_task(mapping, subtask, sub_environment)
+                except TaskExecutionError as e:
+                    logger.error(str(e))
+                    sub_environment.job_failed = True
+            if sub_environment.job_failed:
+                raise TaskExecutionError(f"Composite action '{task.name}' failed")
         else:
             environment.current_task_definition = task_definition  # type: ignore
             environment.current_task = task
@@ -130,12 +149,7 @@ def run(prepare: Prepare, mapping: Dict[str, TaskDefinition]) -> None:
         env = os.environ.copy()
         step_env = JobEnvironment(env, {}, {})
         for task in tasks:
-            if task.if_ is None:
-                if step_env.job_failed:
-                    logger.debug(f"Skipping task '{task.name}' (previous task failed)")
-                    continue
-            elif not evaluate_condition(task.if_, step_env):
-                logger.debug(f"Skipping task '{task.name}' (if condition is false)")
+            if __should_skip(task, step_env):
                 continue
             try:
                 __handle_task(mapping, task, step_env)
