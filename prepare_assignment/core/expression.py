@@ -9,8 +9,9 @@ _OP_RE = re.compile(r'&&|\|\||!(?!=)')
 # Match attribute access where the name contains hyphens (not valid Python identifiers)
 # e.g. .stripped-files → ["stripped-files"]
 _HYPHEN_ATTR_RE = re.compile(r'\.([a-zA-Z_][a-zA-Z0-9_]*(?:-[a-zA-Z0-9_]+)+)')
-# Match bare lowercase true/false literals (GitHub Actions style)
-_BOOL_RE = re.compile(r'\btrue\b|\bfalse\b')
+# Matches quoted strings (to preserve them) OR bare true/false literals to capitalise.
+# Group 1 is set only for bare boolean literals; quoted strings are captured but not replaced.
+_BOOL_RE = re.compile(r"'[^']*'|\"[^\"]*\"|\b(true|false)\b")
 
 
 def _preprocess(expr: str) -> str:
@@ -22,9 +23,15 @@ def _preprocess(expr: str) -> str:
             return " or "
         return "not "
 
+    def replace_bool(m: re.Match) -> str:  # type: ignore
+        # Only replace when group 1 matched (bare literal, not inside quotes)
+        if m.group(1) is not None:
+            return m.group(1).capitalize()
+        return m.group(0)
+
     expr = _OP_RE.sub(replace_op, expr)
     expr = _HYPHEN_ATTR_RE.sub(lambda m: f'["{m.group(1)}"]', expr)
-    expr = _BOOL_RE.sub(lambda m: m.group(0).capitalize(), expr)
+    expr = _BOOL_RE.sub(replace_bool, expr)
     return expr
 
 

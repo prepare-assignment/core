@@ -197,3 +197,16 @@ def test_evaluate_env_false_not_equals_true_literal() -> None:
     """env.release == true is False when release is "false"."""
     e = env(environment={"release": "false"})
     assert evaluate_condition("env.release == true", e) is False
+
+
+def test_evaluate_quoted_true_string_unchanged() -> None:
+    """'true' inside quotes is not rewritten to Python True.
+    For non-boolean env vars the quoted string comparison works as expected.
+    For boolean-coerced env vars use the unquoted literal: env.flag == true."""
+    # Non-boolean env var: 'true' literal is preserved, comparison works normally
+    e = env(environment={"flag": "other"})
+    assert evaluate_condition("env.flag == 'true'", e) is False
+    # Boolean env var is coerced to True (bool); compare with unquoted true, not 'true'
+    e2 = env(environment={"flag": "true"})
+    assert evaluate_condition("env.flag == true", e2) is True
+    assert evaluate_condition("env.flag == 'true'", e2) is False
