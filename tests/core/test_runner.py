@@ -145,6 +145,100 @@ def test_runner_if_condition_true_runs_task(mocker: MockerFixture) -> None:
     assert mock.call_count == 1
 
 
+# ── composite if: expressions ─────────────────────────────────────────────────
+
+_composite_yaml = dict(name='Test', jobs={'prepare': [
+    {'name': 'test composite', 'uses': 'composite', 'with': {'input': 'test'}},
+]})
+
+
+def test_runner_composite_if_false_skips_subtask(mocker: MockerFixture) -> None:
+    """A composite subtask with if: False is skipped."""
+    composite_with_if = {
+        'prepare-assignment/composite@latest': CompositeTaskDefinition(
+            id='composite', name='Composite', description='',
+            inputs=[TaskInputDefinition(name='input', description='', required=True, type='string', default=None, items=None)],
+            outputs={}, path='',
+            tasks=[
+                {'name': 'always runs', 'uses': 'remove', 'with': {'input': ['out'], 'force': True, 'recursive': True}},
+                {'name': 'never runs', 'if': 'False', 'uses': 'remove', 'with': {'input': ['out'], 'force': True, 'recursive': True}},
+            ]
+        ),
+        'prepare-assignment/remove@latest': mapping['prepare-assignment/remove@latest'],
+    }
+    mocker.patch("prepare_assignment.core.runner.tasks_logger")
+    mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
+    mock.side_effect = MockedPopen
+    run(Prepare.of(_composite_yaml), composite_with_if)
+    assert mock.call_count == 1
+
+
+def test_runner_composite_if_always_runs_after_failure(mocker: MockerFixture) -> None:
+    """A composite subtask with if: always() runs even after a failing subtask."""
+    composite_with_always = {
+        'prepare-assignment/composite@latest': CompositeTaskDefinition(
+            id='composite', name='Composite', description='',
+            inputs=[TaskInputDefinition(name='input', description='', required=True, type='string', default=None, items=None)],
+            outputs={}, path='',
+            tasks=[
+                {'name': 'fails', 'uses': 'remove', 'with': {'input': ['out'], 'force': True, 'recursive': True}},
+                {'name': 'always', 'if': 'always()', 'uses': 'remove', 'with': {'input': ['out'], 'force': True, 'recursive': True}},
+            ]
+        ),
+        'prepare-assignment/remove@latest': mapping['prepare-assignment/remove@latest'],
+    }
+    mocker.patch("prepare_assignment.core.runner.tasks_logger")
+    mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
+    mock.side_effect = [MockedPopenFail(None), MockedPopen(None)]
+    with pytest.raises(TaskExecutionError):
+        run(Prepare.of(_composite_yaml), composite_with_always)
+    assert mock.call_count == 2
+
+
+def test_runner_composite_if_failure_runs_on_failure(mocker: MockerFixture) -> None:
+    """A composite subtask with if: failure() runs when a prior subtask failed."""
+    composite_with_failure = {
+        'prepare-assignment/composite@latest': CompositeTaskDefinition(
+            id='composite', name='Composite', description='',
+            inputs=[TaskInputDefinition(name='input', description='', required=True, type='string', default=None, items=None)],
+            outputs={}, path='',
+            tasks=[
+                {'name': 'fails', 'uses': 'remove', 'with': {'input': ['out'], 'force': True, 'recursive': True}},
+                {'name': 'on-fail', 'if': 'failure()', 'uses': 'remove', 'with': {'input': ['out'], 'force': True, 'recursive': True}},
+            ]
+        ),
+        'prepare-assignment/remove@latest': mapping['prepare-assignment/remove@latest'],
+    }
+    mocker.patch("prepare_assignment.core.runner.tasks_logger")
+    mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
+    mock.side_effect = [MockedPopenFail(None), MockedPopen(None)]
+    with pytest.raises(TaskExecutionError):
+        run(Prepare.of(_composite_yaml), composite_with_failure)
+    assert mock.call_count == 2
+
+
+def test_runner_composite_if_success_skipped_after_failure(mocker: MockerFixture) -> None:
+    """A composite subtask with if: success() is skipped after a prior subtask failed."""
+    composite_with_success = {
+        'prepare-assignment/composite@latest': CompositeTaskDefinition(
+            id='composite', name='Composite', description='',
+            inputs=[TaskInputDefinition(name='input', description='', required=True, type='string', default=None, items=None)],
+            outputs={}, path='',
+            tasks=[
+                {'name': 'fails', 'uses': 'remove', 'with': {'input': ['out'], 'force': True, 'recursive': True}},
+                {'name': 'skipped', 'if': 'success()', 'uses': 'remove', 'with': {'input': ['out'], 'force': True, 'recursive': True}},
+            ]
+        ),
+        'prepare-assignment/remove@latest': mapping['prepare-assignment/remove@latest'],
+    }
+    mocker.patch("prepare_assignment.core.runner.tasks_logger")
+    mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
+    mock.side_effect = MockedPopenFail
+    with pytest.raises(TaskExecutionError):
+        run(Prepare.of(_composite_yaml), composite_with_success)
+    assert mock.call_count == 1
+
+
 # ── set-env propagation ───────────────────────────────────────────────────────
 
 _SET_ENV_LINE = f"{DEMARCATION}set-env{DEMARCATION}MY_VAR{DEMARCATION}\"hello\"\n"
