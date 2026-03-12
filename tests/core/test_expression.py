@@ -159,3 +159,41 @@ def test_evaluate_condition_invalid_returns_false() -> None:
 def test_evaluate_condition_wrapped() -> None:
     e = env(inputs={"flag": True})
     assert evaluate_condition("${{ inputs.flag }}", e) is True
+
+
+# ── boolean coercion for env vars ─────────────────────────────────────────────
+
+def test_evaluate_env_true_string_coerced_to_bool() -> None:
+    """env var with value "true" is coerced to bool True."""
+    e = env(environment={"release": "true"})
+    assert evaluate_condition("env.release", e) is True
+
+
+def test_evaluate_env_false_string_coerced_to_bool() -> None:
+    """env var with value "false" is coerced to bool False."""
+    e = env(environment={"release": "false"})
+    assert evaluate_condition("env.release", e) is False
+
+
+def test_evaluate_env_true_uppercase_coerced() -> None:
+    """env var with value "True" (Python-style) is also coerced."""
+    e = env(environment={"release": "True"})
+    assert evaluate_condition("env.release", e) is True
+
+
+def test_evaluate_env_bool_equals_true_literal() -> None:
+    """env.release == true (lowercase literal) evaluates correctly."""
+    e = env(environment={"release": "true"})
+    assert evaluate_condition("env.release == true", e) is True
+
+
+def test_evaluate_env_bool_equals_True_literal() -> None:
+    """env.release == True (Python literal) evaluates correctly."""
+    e = env(environment={"release": "true"})
+    assert evaluate_condition("env.release == True", e) is True
+
+
+def test_evaluate_env_false_not_equals_true_literal() -> None:
+    """env.release == true is False when release is "false"."""
+    e = env(environment={"release": "false"})
+    assert evaluate_condition("env.release == true", e) is False

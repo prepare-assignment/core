@@ -9,6 +9,8 @@ _OP_RE = re.compile(r'&&|\|\||!(?!=)')
 # Match attribute access where the name contains hyphens (not valid Python identifiers)
 # e.g. .stripped-files → ["stripped-files"]
 _HYPHEN_ATTR_RE = re.compile(r'\.([a-zA-Z_][a-zA-Z0-9_]*(?:-[a-zA-Z0-9_]+)+)')
+# Match bare lowercase true/false literals (GitHub Actions style)
+_BOOL_RE = re.compile(r'\btrue\b|\bfalse\b')
 
 
 def _preprocess(expr: str) -> str:
@@ -22,6 +24,7 @@ def _preprocess(expr: str) -> str:
 
     expr = _OP_RE.sub(replace_op, expr)
     expr = _HYPHEN_ATTR_RE.sub(lambda m: f'["{m.group(1)}"]', expr)
+    expr = _BOOL_RE.sub(lambda m: m.group(0).capitalize(), expr)
     return expr
 
 
@@ -51,6 +54,19 @@ class _Namespace:
         return item in d
 
 
+def _coerce_env(env: Dict[str, str]) -> Dict[str, Any]:
+    """Convert string "true"/"false" env var values to Python booleans."""
+    result: Dict[str, Any] = {}
+    for k, v in env.items():
+        if v.lower() == "true":
+            result[k] = True
+        elif v.lower() == "false":
+            result[k] = False
+        else:
+            result[k] = v
+    return result
+
+
 def _build_names(environment: JobEnvironment) -> Dict[str, Any]:
     tasks_ctx = {
         step: {"outputs": outputs}
@@ -58,7 +74,7 @@ def _build_names(environment: JobEnvironment) -> Dict[str, Any]:
     }
     return {
         "inputs": _Namespace(environment.inputs),
-        "env": _Namespace(environment.environment),
+        "env": _Namespace(_coerce_env(environment.environment)),
         "tasks": _Namespace(tasks_ctx),
     }
 
