@@ -65,10 +65,10 @@ def run(
     env_vars: Dict[str, str] = {}
     for item in (env or []):
         if "=" not in item:
-            raise typer.BadParameter("Environment variables must be in KEY=VALUE format.", param_hint=["-e", "--env"])
+            raise typer.BadParameter("Environment variables must be in KEY=VALUE format.", param_hint="-e/--env")
         key, value = item.split("=", 1)
         if not key:
-            raise typer.BadParameter("Environment variable name cannot be empty.", param_hint=["-e", "--env"])
+            raise typer.BadParameter("Environment variable name cannot be empty.", param_hint="-e/--env")
         env_vars[key] = value
     # ctx.args only contains arguments unknown to Click (known options like --debug,
     # --verbose are consumed by the parser and never appear here)
