@@ -147,19 +147,6 @@ def test_runner_if_condition_true_runs_task(mocker: MockerFixture) -> None:
 
 # ── composite if: expressions ─────────────────────────────────────────────────
 
-_composite_two_subtasks = {
-    'prepare-assignment/composite@latest': CompositeTaskDefinition(
-        id='composite', name='Two-subtask composite', description='',
-        inputs=[TaskInputDefinition(name='input', description='', required=True, type='string', default=None, items=None)],
-        outputs={}, path='',
-        tasks=[
-            {'name': 'first subtask', 'uses': 'remove', 'with': {'input': ['out'], 'force': True, 'recursive': True}},
-            {'name': 'second subtask', 'uses': 'remove', 'with': {'input': ['out'], 'force': True, 'recursive': True}},
-        ]
-    ),
-    'prepare-assignment/remove@latest': mapping['prepare-assignment/remove@latest'],
-}
-
 _composite_yaml = dict(name='Test', jobs={'prepare': [
     {'name': 'test composite', 'uses': 'composite', 'with': {'input': 'test'}},
 ]})
