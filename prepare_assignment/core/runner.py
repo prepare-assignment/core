@@ -142,11 +142,11 @@ def __handle_task(mapping: Dict[str, TaskDefinition],
             __execute_task(environment)
 
 
-def run(prepare: Prepare, mapping: Dict[str, TaskDefinition]) -> None:
+def run(prepare: Prepare, mapping: Dict[str, TaskDefinition], env_vars: Dict[str, str] = {}) -> None:
     logger.debug("========== Running prepare_assignment assignment")
     for job, tasks in prepare.jobs.items():
         logger.debug(f"Running job: {job}")
-        env = os.environ.copy()
+        env = {**os.environ.copy(), **env_vars}
         step_env = JobEnvironment(env, {}, {})
         for task in tasks:
             if __should_skip(task, step_env):

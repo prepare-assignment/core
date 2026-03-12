@@ -239,6 +239,35 @@ def test_runner_composite_if_success_skipped_after_failure(mocker: MockerFixture
     assert mock.call_count == 1
 
 
+# ── env_vars parameter ────────────────────────────────────────────────────────
+
+_single_task_yaml = dict(name='Test', jobs={'prepare': [
+    {'name': 'remove', 'uses': 'remove', 'id': 'remove',
+     'with': {'input': ['out'], 'force': True, 'recursive': True}},
+]})
+
+
+def test_runner_env_vars_passed_to_subprocess(mocker: MockerFixture) -> None:
+    """Env vars passed to run() appear in the subprocess environment."""
+    mocker.patch("prepare_assignment.core.runner.tasks_logger")
+    mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
+    factory = _make_popen_factory([[]])
+    mock.side_effect = factory
+    run(Prepare.of(_single_task_yaml), mapping, env_vars={"MY_VAR": "hello"})
+    assert factory.captured[0].get("MY_VAR") == "hello"  # type: ignore
+
+
+def test_runner_env_vars_override_os_environ(mocker: MockerFixture) -> None:
+    """Env vars passed to run() override existing os.environ keys."""
+    mocker.patch("prepare_assignment.core.runner.tasks_logger")
+    mocker.patch.dict("prepare_assignment.core.runner.os.environ", {"MY_VAR": "original"})
+    mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
+    factory = _make_popen_factory([[]])
+    mock.side_effect = factory
+    run(Prepare.of(_single_task_yaml), mapping, env_vars={"MY_VAR": "overridden"})
+    assert factory.captured[0].get("MY_VAR") == "overridden"  # type: ignore
+
+
 # ── set-env propagation ───────────────────────────────────────────────────────
 
 _SET_ENV_LINE = f"{DEMARCATION}set-env{DEMARCATION}MY_VAR{DEMARCATION}\"hello\"\n"

@@ -1,6 +1,6 @@
 import os.path
 import sys
-from typing import Optional
+from typing import Dict, List, Optional
 
 import typer
 from typing_extensions import Annotated
@@ -31,8 +31,9 @@ def main(ctx: typer.Context):
         typer.echo(f"Virtual env: {get_virtualenv_name()}")
 
 
-@app.command()
+@app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def run(
+    ctx: typer.Context,
     file_name: Annotated[
         Optional[str],
         typer.Option("--file", "-f", help="Configuration file")
@@ -48,7 +49,11 @@ def run(
     verbose: Annotated[
         int,
         typer.Option("--verbose", "-v", count=True, help="increase task output verbosity")
-    ] = CONFIG.core.verbose
+    ] = CONFIG.core.verbose,
+    env: Annotated[
+        Optional[List[str]],
+        typer.Option("-e", "--env", help="Set environment variable (KEY=VALUE)")
+    ] = None,
 ):
     """
     Parse 'prepare_assignment.y(a)ml' and execute all jobs
@@ -57,8 +62,17 @@ def run(
     CONFIG.core.git_mode = git # type: ignore
     CONFIG.core.verbose = verbose  # type: ignore
 
+    env_vars: Dict[str, str] = {}
+    for item in (env or []):
+        key, _, value = item.partition("=")
+        env_vars[key] = value
+    # ctx.args only contains arguments unknown to Click (known options like --debug,
+    # --verbose are consumed by the parser and never appear here)
+    for arg in ctx.args:
+        if arg.startswith("--"):
+            env_vars[arg[2:]] = "true"
+
     try:
-        prepare(file_name)
+        prepare(file_name, env_vars)
     except Exception:
         raise typer.Exit(code=1)
-

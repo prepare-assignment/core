@@ -1,7 +1,7 @@
 import logging
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
 from prepare_toolbox.file import get_matching_files
 
@@ -40,7 +40,7 @@ def __get_prepare_file(file: Optional[str]) -> str:
     return file
 
 
-def prepare(file_name: Optional[str]) -> None:
+def prepare(file_name: Optional[str], env_vars: Dict[str, str] = {}) -> None:
     # Set the logger
     add_logging_level("TRACE", logging.DEBUG - 5, "trace")
     logger = logging.getLogger("prepare_assignment")
@@ -68,7 +68,7 @@ def prepare(file_name: Optional[str]) -> None:
         prepare = Prepare.of(yaml)
 
         # Execute
-        run(prepare, mapping)
+        run(prepare, mapping, env_vars)
     except TaskExecutionError as e:
         logger.error(e.message)
         raise
