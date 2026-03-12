@@ -26,8 +26,8 @@ def _preprocess(expr: str) -> str:
     def replace_bool(m: re.Match) -> str:  # type: ignore
         # Only replace when group 1 matched (bare literal, not inside quotes)
         if m.group(1) is not None:
-            return m.group(1).capitalize()
-        return m.group(0)
+            return str(m.group(1)).capitalize()
+        return str(m.group(0))
 
     expr = _OP_RE.sub(replace_op, expr)
     expr = _HYPHEN_ATTR_RE.sub(lambda m: f'["{m.group(1)}"]', expr)
