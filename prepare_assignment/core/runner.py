@@ -5,7 +5,7 @@ import os.path
 import shlex
 import subprocess
 import sys
-from typing import Dict
+from typing import Dict, Optional
 
 from prepare_toolbox.command import DEMARCATION
 
@@ -142,7 +142,8 @@ def __handle_task(mapping: Dict[str, TaskDefinition],
             __execute_task(environment)
 
 
-def run(prepare: Prepare, mapping: Dict[str, TaskDefinition], env_vars: Dict[str, str] = {}) -> None:
+def run(prepare: Prepare, mapping: Dict[str, TaskDefinition], env_vars: Optional[Dict[str, str]] = None) -> None:
+    env_vars = env_vars or {}
     logger.debug("========== Running prepare_assignment assignment")
     for job, tasks in prepare.jobs.items():
         logger.debug(f"Running job: {job}")

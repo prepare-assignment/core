@@ -43,3 +43,24 @@ def test_run_with_shorthand_flag(mocker: MockerFixture) -> None:
     mock_prepare = mocker.patch("prepare_assignment.cli.main.prepare")
     cli_runner.invoke(app, ["run", "--test", "--release"])
     mock_prepare.assert_called_once_with(None, {"test": "true", "release": "true"})
+
+
+def test_run_e_flag_missing_equals_raises() -> None:
+    """-e MYVAR (no =) exits with an error."""
+    result = cli_runner.invoke(app, ["run", "-e", "MYVAR"])
+    assert result.exit_code != 0
+
+
+def test_run_e_flag_empty_key_raises() -> None:
+    """-e =1 (empty key) exits with an error."""
+    result = cli_runner.invoke(app, ["run", "-e", "=1"])
+    assert result.exit_code != 0
+
+
+def test_run_shorthand_key_value_form(mocker: MockerFixture) -> None:
+    """--key=value sets key=value in env vars."""
+    mock_prepare = mocker.patch("prepare_assignment.cli.main.prepare")
+    cli_runner.invoke(app, ["run", "--mode=production"])
+    mock_prepare.assert_called_once_with(None, {"mode": "production"})
+
+

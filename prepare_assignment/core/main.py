@@ -40,7 +40,8 @@ def __get_prepare_file(file: Optional[str]) -> str:
     return file
 
 
-def prepare(file_name: Optional[str], env_vars: Dict[str, str] = {}) -> None:
+def prepare(file_name: Optional[str], env_vars: Optional[Dict[str, str]] = None) -> None:
+    env_vars = env_vars or {}
     # Set the logger
     add_logging_level("TRACE", logging.DEBUG - 5, "trace")
     logger = logging.getLogger("prepare_assignment")
