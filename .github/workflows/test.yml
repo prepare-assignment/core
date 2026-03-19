@@ -32,19 +32,9 @@ jobs:
       run: uv python install ${{ matrix.python-version }}
     - name: Install dependencies
       run: uv sync --group test
-    - name: Write prepare config
-      shell: bash
-      run: |
-        if [ "$RUNNER_OS" == "Linux" ]; then
-          config_dir="$HOME/.config/prepare"
-        elif [ "$RUNNER_OS" == "macOS" ]; then
-          config_dir="$HOME/Library/Application Support/prepare"
-        elif [ "$RUNNER_OS" == "Windows" ]; then
-          config_dir="$APPDATA/prepare"
-        fi
-        mkdir -p "$config_dir"
-        printf 'core:\n  git-mode: "https"\n' > "$config_dir/config.yml"
     - name: Run tests
+      env:
+        PREPARE_TEST_GIT_MODE: https
       run: uv run pytest --cov --cov-report=xml --junitxml=tests.xml
     - name: Test Report
       uses: mikepenz/action-junit-report@v6
