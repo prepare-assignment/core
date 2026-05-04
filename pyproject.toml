@@ -1,6 +1,6 @@
 [project]
 name = "prepare-assignment"
-version = "0.2.1"
+version = "0.3.0"
 description = "Prepare assignment"
 authors = [{name = "Bonajo", email = "m.bonajo@fontys.nl"}]
 license = {text = "MIT"}
