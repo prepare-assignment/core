@@ -7,7 +7,7 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, cast
 
 from git import Repo, Git
 from importlib_resources import files
@@ -53,7 +53,7 @@ def __resolve_version(git_url: str, version: str) -> Optional[str]:
     if _COMMIT_HASH_RE.match(version):
         return version
 
-    raw = Git().ls_remote("--tags", git_url)
+    raw = cast(str, Git().ls_remote("--tags", git_url))
     all_tags: List[str] = []
     for line in raw.splitlines():
         parts = line.split("\t")
