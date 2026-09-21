@@ -1,6 +1,5 @@
 import logging
 import os.path
-import shutil
 from pathlib import Path
 from typing import Set
 
@@ -11,6 +10,7 @@ from prepare_assignment.core.preparer import __prepare_tasks
 from prepare_assignment.core.versions import get_git_url, is_fixed_version
 from prepare_assignment.data.task_definition import TaskDefinition
 from prepare_assignment.data.task_properties import TaskProperties
+from prepare_assignment.utils.files import remove_tree
 from prepare_assignment.utils.dependency import get_dependencies
 from prepare_assignment.utils.paths import get_tasks_path
 from prepare_assignment.utils.tasks import get_all_tasks
@@ -33,10 +33,10 @@ def remove(task: str, recursive: bool) -> None:
                              f"as there are other tasks dependent on this task or on a dependency of this task")
 
     if not recursive:
-        shutil.rmtree(props.task_path)
+        remove_tree(props.task_path)
     else:
         for dep in dependencies:
-            shutil.rmtree(dep.task_path)
+            remove_tree(dep.task_path)
 
 
 def update(task: str, recursive: bool) -> None:
@@ -58,19 +58,19 @@ def __reinstall(props: TaskProperties) -> None:
         add(str(props))
         return
     backup = Path(f"{props.task_path}.backup")
-    shutil.rmtree(backup, ignore_errors=True)
+    remove_tree(backup)
     os.replace(props.task_path, backup)
     try:
         add(str(props))
     except Exception:
-        shutil.rmtree(props.task_path, ignore_errors=True)
+        remove_tree(props.task_path, ignore_errors=True)
         os.replace(backup, props.task_path)
         raise
-    shutil.rmtree(backup, ignore_errors=True)
+    remove_tree(backup, ignore_errors=True)
 
 
 def remove_all() -> None:
-    shutil.rmtree(tasks_path)
+    remove_tree(tasks_path)
 
 
 def ls() -> None:

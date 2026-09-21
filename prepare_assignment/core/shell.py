@@ -3,9 +3,12 @@ import shutil
 import sys
 import tempfile
 from contextlib import contextmanager
-from typing import Final, Iterator, List, Optional, Tuple, Union
+from typing import Dict, Final, Iterator, List, Optional, Tuple, Union
 
 from prepare_assignment.data.errors import TaskExecutionError
+
+# Make sure python can always print (non-ascii) output, regardless of the platform encoding (e.g. cp1252 on Windows)
+PYTHON_UTF8_ENVIRONMENT: Final[Dict[str, str]] = {"PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
 
 SHELLS: Final[Tuple[str, ...]] = ("bash", "sh", "pwsh", "powershell", "cmd", "python")
 DEFAULT_SHELL: Final[str] = "bash"

@@ -281,3 +281,10 @@ def test_cmd_multiline_with_quotes(project: Path) -> None:
 def test_cmd_exit_code(project: Path) -> None:
     with pytest.raises(TaskExecutionError):
         run(prepare(sh("fail", "cmd", "echo before\nexit /b 3\n")), {})
+
+
+def test_python_shell_uses_utf8_regardless_of_environment(project: Path) -> None:
+    """On Windows python defaults to cp1252 for pipes, printing '✓' then raised a UnicodeEncodeError"""
+    script = "import sys\nprint('✓')\nopen('out.txt', 'w').write(f'{sys.stdout.encoding} {sys.flags.utf8_mode}')"
+    run(prepare(py("unicode", script)), {}, env_vars={"PYTHONIOENCODING": "cp1252", "PYTHONUTF8": "0"})
+    assert read(project / "out.txt") == "utf-8 1"

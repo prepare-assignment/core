@@ -12,7 +12,7 @@ from prepare_toolbox.command import DEMARCATION
 
 from prepare_assignment.core.command import COMMAND_MAPPING
 from prepare_assignment.core.expression import evaluate_condition, evaluate
-from prepare_assignment.core.shell import Command, shell_command
+from prepare_assignment.core.shell import Command, PYTHON_UTF8_ENVIRONMENT, shell_command
 from prepare_assignment.core.subsituter import substitute_all, __substitute
 from prepare_assignment.data.task_definition import TaskDefinition, PythonTaskDefinition, CompositeTaskDefinition
 from prepare_assignment.data.constants import CONFIG
@@ -112,9 +112,7 @@ def __execute_task(environment: JobEnvironment) -> None:
 
     env = environment.process_environment
     env["VIRTUAL_ENV"] = venv_path
-    # Make sure the task can always print (non-ascii) output, regardless of the platform encoding
-    env["PYTHONIOENCODING"] = "utf-8"
-    env["PYTHONUTF8"] = "1"
+    env.update(PYTHON_UTF8_ENVIRONMENT)
     for key, value in environment.current_task.with_.items():  # type: ignore
         sanitized = "PREPARE_" + key.replace(" ", "_").upper()
         env[sanitized] = json.dumps(value)
@@ -127,8 +125,11 @@ def __execute_task(environment: JobEnvironment) -> None:
 
 def __execute_shell_command(command: str, shell: str, environment: JobEnvironment) -> None:
     logger.debug(f"Executing run ({shell}) '{command}'")
+    env = environment.process_environment
+    if shell == "python":
+        env.update(PYTHON_UTF8_ENVIRONMENT)
     with shell_command(shell, command) as args:
-        __run_process(args, environment, environment.process_environment, f"Shell command '{command}'")
+        __run_process(args, environment, env, f"Shell command '{command}'")
 
 
 def __should_skip(task: Task, environment: JobEnvironment) -> bool:

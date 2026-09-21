@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import shutil
 import subprocess
 import sys
 from datetime import datetime
@@ -18,6 +17,7 @@ from prepare_assignment.data.errors import DependencyError, ValidationError, Pre
 from prepare_assignment.data.task_definition import TaskDefinition, CompositeTaskDefinition, \
     PythonTaskDefinition, ValidableTask
 from prepare_assignment.data.task_properties import TaskProperties
+from prepare_assignment.utils.files import remove_tree
 from prepare_assignment.utils.paths import get_cache_path, get_tasks_path
 
 # Set the cache path
@@ -197,7 +197,7 @@ def __prepare_task(props: TaskProperties) -> ValidableTask:
     except Exception as e:
         # If something went wrong in the previous steps,
         # that means the task is not valid and should be removed
-        shutil.rmtree(props.task_path, ignore_errors=True)
+        remove_tree(props.task_path, ignore_errors=True)
         # We need to raise an exception, because if it was part of a composite task,
         # then that task is also not valid
         raise PrepareTaskError(f"Unable to prepare task '{str(props)}'", e) from e
@@ -228,10 +228,10 @@ def __install_task_unchecked(props: TaskProperties, parsed: Dict[str, ValidableT
     except PrepareTaskError:
         # If any of the subtasks this composite task depend on fails,
         # we have to remove this task as well
-        shutil.rmtree(props.task_path, ignore_errors=True)
+        remove_tree(props.task_path, ignore_errors=True)
         raise
     except Exception as e:
-        shutil.rmtree(props.task_path, ignore_errors=True)
+        remove_tree(props.task_path, ignore_errors=True)
         raise PrepareTaskError(f"Unable to prepare task '{props}'", e) from e
     parsed[str(props)] = valid_task
 
@@ -253,7 +253,7 @@ def __prepare_tasks(tasks: List[Any], parsed: Optional[Dict[str, ValidableTask]]
             logger.debug(f"Task '{props}' has not been loaded in this run")
             if os.path.isdir(props.task_path) and not __is_installed(props):
                 logger.warning(f"Task '{props}' was not completely installed, installing it again")
-                shutil.rmtree(props.task_path, ignore_errors=True)
+                remove_tree(props.task_path)
             # Check if task has already been installed in a previous run
             if __is_installed(props):
                 __load_task_from_disk(props, parsed)

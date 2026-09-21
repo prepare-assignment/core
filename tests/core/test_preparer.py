@@ -1,6 +1,4 @@
 import os
-import shutil
-import sys
 import tempfile
 from pathlib import Path
 from typing import Final, Dict, Any
@@ -13,6 +11,7 @@ from prepare_assignment.core.preparer import prepare_tasks, __task_install_depen
 from prepare_assignment.data.errors import DependencyError, PrepareTaskError
 from virtualenv import cli_run  # type: ignore
 
+from prepare_assignment.utils.files import remove_tree
 from prepare_assignment.utils.paths import get_cache_path
 
 PREPARE: Final[Dict[str, Any]] = {
@@ -41,22 +40,7 @@ def set_cache(class_mocker) -> None:
 
 
 def __clean_cache() -> None:
-
-    if not os.path.exists(CACHE_PATH):
-        return
-
-    # We need to fix the readonly git directory on windows
-    def onerror(func, path, exec_info):
-        import stat
-        if not os.access(path, os.W_OK):
-            os.chmod(path, stat.S_IWUSR)
-            func(path)
-
-    if sys.platform == "win32":
-        shutil.rmtree(CACHE_PATH, onerror=onerror)
-    else:
-        shutil.rmtree(CACHE_PATH, ignore_errors=True)
-
+    remove_tree(CACHE_PATH)
     Path(CACHE_PATH).mkdir(parents=True, exist_ok=True)
 
 
@@ -140,7 +124,7 @@ def test_prepare_task_main_outside_repo(mocker: MockerFixture) -> None:
     mocker.patch("prepare_assignment.core.preparer.__download_task")
     mocker.patch("prepare_assignment.core.preparer.validate_task_definition", return_value=task_yaml_evil)
     mocker.patch("prepare_assignment.core.preparer.validate_default_values")
-    mocker.patch("prepare_assignment.core.preparer.shutil.rmtree")
+    mocker.patch("prepare_assignment.core.preparer.remove_tree")
     prepare = {'prepare': [{'name': 'evil task', 'uses': 'evil', 'with': {}}]}
     with pytest.raises(PrepareTaskError) as exc_info:
         prepare_tasks("prepare.yml", prepare)
@@ -244,7 +228,7 @@ def test_missing_sub_task_of_cached_composite_is_installed(mocker: MockerFixture
     sub_task = next(k for k in mapping if not k.startswith("prepare-assignment/composite@"))
     org, rest = sub_task.split("/")
     name, version = rest.split("@")
-    shutil.rmtree(os.path.join(TASKS_PATH, org, name, version), ignore_errors=True)
+    remove_tree(os.path.join(TASKS_PATH, org, name, version))
     mapping = prepare_tasks("prepare.yml", prepare)
     assert sub_task in mapping
     assert spy.call_count == 3
