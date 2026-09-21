@@ -12,7 +12,7 @@ dependencies = [
     "gitpython>=3.1.59",
     "prepare-toolbox==0.4.0",
     "virtualenv>=20.25.0",
-    "typer==0.17.3",
+    "typer==0.27.2",
     "treelib>=1.7.0",
     "multipledispatch>=1.0.0",
     "dacite>=1.9.2",
