@@ -1,8 +1,7 @@
 import logging
-from typing import Optional
+from typing import Annotated, Optional
 
 import typer
-from typing_extensions import Annotated
 
 from prepare_assignment.core.task_handler import info, remove, update, add
 
