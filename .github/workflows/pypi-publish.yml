@@ -1,0 +1,45 @@
+name: PyPI publish
+
+# Reusable build and publish. Two callers pass a version in:
+#   - release.yml           on a human-pushed v* tag
+#   - semantic-release.yml  after semantic-release cuts a new version
+#
+# It lives here rather than in either caller because a tag pushed with
+# GITHUB_TOKEN does not trigger workflows, so semantic-release cannot rely on
+# release.yml's tag trigger to publish the version it just cut.
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Version to build and publish, without the leading v (e.g. 1.2.3).
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: build & publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.1.0
+        with:
+          python-version: "3.12"
+
+      # The version is not committed back to main, so the version in
+      # pyproject.toml is stale. Set the released version just for this build.
+      - name: Set version
+        run: uv version "${{ inputs.version }}" --frozen
+
+      - name: Build
+        run: uv build
+
+      - name: Publish
+        run: uv publish
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
