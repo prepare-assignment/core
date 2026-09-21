@@ -138,3 +138,44 @@ def test_validate_default_values_invalid_array() -> None:
 def test_validate_default_values_valid() -> None:
     task = PythonTaskDefinition.of(TASK_DEFINITION, "test.yml")
     validate_default_values(task)
+
+
+def _validate_definition(mocker: MockerFixture, definition: Dict[str, Any]) -> None:
+    mocker.patch("prepare_assignment.core.validator.load_yaml", return_value=definition)
+    mocker.patch("prepare_assignment.core.validator.YAML_LOADER.dump")
+    mocker.patch("builtins.open", mocker.mock_open())
+    validate_task_definition("task.yml")
+
+
+COMPOSITE_DEFINITION: Final[Dict[str, Any]] = {
+    'id': 'composite',
+    'name': 'composite',
+    'description': 'composite',
+    'outputs': {'files': {'description': 'files', 'type': 'array', 'items': 'string',
+                          'value': '${{ tasks.remove.outputs.files }}'}},
+    'runs': {'using': 'composite', 'tasks': [{'name': 'remove', 'id': 'remove', 'uses': 'remove'}]}
+}
+
+
+def test_validate_composite_output_value_valid(mocker: MockerFixture) -> None:
+    _validate_definition(mocker, copy.deepcopy(COMPOSITE_DEFINITION))
+
+
+def test_validate_python_output_value_invalid(mocker: MockerFixture) -> None:
+    definition = copy.deepcopy(TASK_DEFINITION)
+    definition['outputs'] = {'out': {'description': 'x', 'value': '${{ inputs.x }}'}}
+    with pytest.raises(ValidationError):
+        _validate_definition(mocker, definition)
+
+
+def test_validate_default_values_integer_for_number() -> None:
+    task_copy = copy.deepcopy(TASK_DEFINITION)
+    task_copy["inputs"]["num"] = {'description': 'n', 'type': 'number', 'default': 1, 'required': False}
+    validate_default_values(PythonTaskDefinition.of(task_copy, "test.yml"))
+
+
+def test_validate_default_values_bool_for_integer_invalid() -> None:
+    task_copy = copy.deepcopy(TASK_DEFINITION)
+    task_copy["inputs"]["num"] = {'description': 'n', 'type': 'integer', 'default': True, 'required': False}
+    with pytest.raises(ValidationError):
+        validate_default_values(PythonTaskDefinition.of(task_copy, "test.yml"))

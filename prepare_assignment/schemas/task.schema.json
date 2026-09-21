@@ -126,6 +126,10 @@
                 "integer",
                 "boolean"
               ]
+            },
+            "value": {
+              "description": "Composite tasks only: expression that sets the output, e.g. '${{ tasks.<id>.outputs.<name> }}'",
+              "type": "string"
             }
           },
           "allOf": [
@@ -177,7 +181,9 @@
         "main": {
           "type": "string"
         },
-        "tasks": { "type": "array"}
+        "tasks": {
+          "type": "array"
+        }
       },
       "allOf": [
         {
@@ -212,5 +218,35 @@
     "name",
     "description",
     "runs"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "runs": {
+            "properties": {
+              "using": {
+                "const": "python"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "outputs": {
+            "patternProperties": {
+              "^[_a-zA-Z][a-zA-Z0-9_-]*$": {
+                "properties": {
+                  "value": {
+                    "not": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   ]
 }

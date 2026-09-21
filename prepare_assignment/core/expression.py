@@ -1,60 +1,92 @@
 import re
 from typing import Any, Dict
 
-from simpleeval import EvalWithCompoundTypes, InvalidExpression
+from simpleeval import EvalWithCompoundTypes
 
+from prepare_assignment.data.errors import ExpressionError
 from prepare_assignment.data.job_environment import JobEnvironment
 
-_OP_RE = re.compile(r'&&|\|\||!(?!=)')
-# Match attribute access where the name contains hyphens (not valid Python identifiers)
-# e.g. .stripped-files → ["stripped-files"]
-_HYPHEN_ATTR_RE = re.compile(r'\.([a-zA-Z_][a-zA-Z0-9_]*(?:-[a-zA-Z0-9_]+)+)')
-# Matches quoted strings (to preserve them) OR bare true/false literals to capitalise.
-# Group 1 is set only for bare boolean literals; quoted strings are captured but not replaced.
-_BOOL_RE = re.compile(r"'[^']*'|\"[^\"]*\"|\b(true|false)\b")
+# Single pass tokenizer: quoted strings are matched first (and left untouched), so the rewrites below
+# never apply inside string literals.
+_TOKEN_RE = re.compile(
+    r"""(?P<string>'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")"""
+    r"|(?P<and>&&)"
+    r"|(?P<or>\|\|)"
+    r"|(?P<not>!(?!=))"
+    # Attribute access where the name contains hyphens (not valid Python identifiers)
+    # e.g. .stripped-files → ["stripped-files"]
+    r"|\.(?P<hyphen>[a-zA-Z_][a-zA-Z0-9_]*(?:-[a-zA-Z0-9_]+)+)"
+    r"|(?P<bool>\b(?:true|false)\b)"
+)
+_STATUS_FUNCTION_RE = re.compile(r"\b(?:success|failure|always)\s*\(")
 
 
 def _preprocess(expr: str) -> str:
-    def replace_op(m: re.Match) -> str:  # type: ignore
-        token = m.group(0)
-        if token == "&&":
+    def replace(m: re.Match) -> str:  # type: ignore
+        kind = m.lastgroup
+        if kind == "and":
             return " and "
-        if token == "||":
+        if kind == "or":
             return " or "
-        return "not "
-
-    def replace_bool(m: re.Match) -> str:  # type: ignore
-        # Only replace when group 1 matched (bare literal, not inside quotes)
-        if m.group(1) is not None:
-            return str(m.group(1)).capitalize()
+        if kind == "not":
+            return " not "
+        if kind == "hyphen":
+            return f'["{m.group("hyphen")}"]'
+        if kind == "bool":
+            return str(m.group("bool")).capitalize()
         return str(m.group(0))
 
-    expr = _OP_RE.sub(replace_op, expr)
-    expr = _HYPHEN_ATTR_RE.sub(lambda m: f'["{m.group(1)}"]', expr)
-    expr = _BOOL_RE.sub(replace_bool, expr)
-    return expr
+    return _TOKEN_RE.sub(replace, expr).strip()
+
+
+def _strip_wrapper(expr: str) -> str:
+    stripped = expr.strip()
+    m = re.fullmatch(r'\${{\s*(.*?)\s*}}', stripped, re.DOTALL)
+    if m:
+        stripped = m.group(1).strip()
+    return stripped
+
+
+def has_status_function(expr: str) -> bool:
+    """
+    Check whether an expression calls one of the status functions (success(), failure(), always()),
+    ignoring occurrences inside string literals.
+    """
+    without_strings = _TOKEN_RE.sub(lambda m: "''" if m.lastgroup == "string" else m.group(0), expr)
+    return _STATUS_FUNCTION_RE.search(without_strings) is not None
+
+
+_MISSING = object()
 
 
 class _Namespace:
-    """Wraps a dict to allow attribute-style access (e.g. inputs.foo, tasks.step.outputs.bar)."""
+    """
+    Wraps a dict to allow attribute-style access (e.g. inputs.foo, tasks.step.outputs.bar).
 
-    def __init__(self, d: Dict[str, Any]) -> None:
+    Accessing a missing key raises an error (to catch typos), unless `missing_ok` is set, in which case
+    None is returned (used for environment variables, which are legitimately optional).
+    """
+
+    def __init__(self, d: Dict[str, Any], name: str, missing_ok: bool = False) -> None:
         object.__setattr__(self, "_d", d)
+        object.__setattr__(self, "_name", name)
+        object.__setattr__(self, "_missing_ok", missing_ok)
 
     def __getattr__(self, name: str) -> Any:
         if name.startswith("_"):
             raise AttributeError(name)
-        d: Dict[str, Any] = object.__getattribute__(self, "_d")
-        _MISSING = object()
-        val = d.get(name, _MISSING)
-        if val is _MISSING:
-            raise AttributeError(name)
-        return _Namespace(val) if isinstance(val, dict) else val
+        return self[name]
 
     def __getitem__(self, key: str) -> Any:
         d: Dict[str, Any] = object.__getattribute__(self, "_d")
-        val = d[key]
-        return _Namespace(val) if isinstance(val, dict) else val
+        prefix: str = object.__getattribute__(self, "_name")
+        val = d.get(key, _MISSING)
+        if val is _MISSING:
+            if object.__getattribute__(self, "_missing_ok"):
+                return None
+            available = ", ".join(sorted(str(k) for k in d.keys())) or "none"
+            raise KeyError(f"'{prefix}.{key}' is not defined (available: {available})")
+        return _Namespace(val, f"{prefix}.{key}") if isinstance(val, dict) else val
 
     def __contains__(self, item: Any) -> bool:
         d: Dict[str, Any] = object.__getattribute__(self, "_d")
@@ -80,9 +112,9 @@ def _build_names(environment: JobEnvironment) -> Dict[str, Any]:
         for step, outputs in environment.outputs.items()
     }
     return {
-        "inputs": _Namespace(environment.inputs),
-        "env": _Namespace(_coerce_env(environment.environment)),
-        "tasks": _Namespace(tasks_ctx),
+        "inputs": _Namespace(environment.inputs, "inputs"),
+        "env": _Namespace(_coerce_env(environment.process_environment), "env", missing_ok=True),
+        "tasks": _Namespace(tasks_ctx, "tasks"),
     }
 
 
@@ -114,24 +146,30 @@ def evaluate(expr: str, environment: JobEnvironment) -> Any:
     """
     Evaluate an expression, optionally wrapped in ${{ }}.
     Returns the typed result.
-    """
-    stripped = expr.strip()
-    m = re.fullmatch(r'\${{\s*(.*?)\s*}}', stripped, re.DOTALL)
-    if m:
-        stripped = m.group(1).strip()
 
+    :raises ExpressionError: if the expression cannot be evaluated
+    """
+    stripped = _strip_wrapper(expr)
     processed = _preprocess(stripped)
     names = _build_names(environment)
     evaluator = EvalWithCompoundTypes(names=names, functions=_build_functions(environment))
-    return evaluator.eval(processed)
+    try:
+        return evaluator.eval(processed)
+    except Exception as e:
+        reason = (e.args[0] if isinstance(e, KeyError) and e.args else str(e)) or type(e).__name__
+        raise ExpressionError(f"Cannot evaluate expression '{stripped}': {reason}") from e
 
 
 def evaluate_condition(expr: str, environment: JobEnvironment) -> bool:
     """
-    Evaluate an expression as a boolean condition.
+    Evaluate an expression as a boolean condition (the 'if' of a step).
+
+    Like GitHub Actions, if the expression doesn't contain a status function (success(), failure(), always()),
+    it is implicitly combined with success(), i.e. `success() && (<expr>)`.
+
+    :raises ExpressionError: if the expression cannot be evaluated
     """
-    try:
-        result = evaluate(expr, environment)
-        return bool(result)
-    except (InvalidExpression, Exception):
+    stripped = _strip_wrapper(expr)
+    if not has_status_function(stripped) and environment.job_failed:
         return False
+    return bool(evaluate(stripped, environment))

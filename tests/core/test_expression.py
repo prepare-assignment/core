@@ -1,6 +1,7 @@
 import pytest
 
-from prepare_assignment.core.expression import evaluate, evaluate_condition
+from prepare_assignment.core.expression import evaluate, evaluate_condition, has_status_function
+from prepare_assignment.data.errors import ExpressionError
 from prepare_assignment.data.job_environment import JobEnvironment
 
 
@@ -151,9 +152,11 @@ def test_evaluate_condition_false() -> None:
     assert evaluate_condition("inputs.x == 2", e) is False
 
 
-def test_evaluate_condition_invalid_returns_false() -> None:
+def test_evaluate_condition_invalid_raises() -> None:
     e = env()
-    assert evaluate_condition("nonexistent.variable", e) is False
+    with pytest.raises(ExpressionError) as exc:
+        evaluate_condition("nonexistent.variable", e)
+    assert "nonexistent.variable" in exc.value.message
 
 
 def test_evaluate_condition_wrapped() -> None:
@@ -210,3 +213,76 @@ def test_evaluate_quoted_true_string_unchanged() -> None:
     e2 = env(environment={"flag": "true"})
     assert evaluate_condition("env.flag == true", e2) is True
     assert evaluate_condition("env.flag == 'true'", e2) is False
+
+
+# ── quote-aware preprocessing ─────────────────────────────────────────────────
+
+@pytest.mark.parametrize("literal", ["'hi!'", "'a && b'", "'a || b'", "'x.some-name'", "'true'", '"false!"',
+                                     "'it\\'s!'"])
+def test_operators_inside_strings_are_untouched(literal: str) -> None:
+    result = evaluate(literal, env())
+    assert result == eval(literal)  # plain python string literal semantics
+
+
+def test_not_operator_outside_string() -> None:
+    assert evaluate("!inputs.flag && 'a!' == 'a!'", env(inputs={"flag": False})) is True
+
+
+def test_not_equal_is_not_rewritten() -> None:
+    assert evaluate("inputs.x != 'hi!'", env(inputs={"x": "hi"})) is True
+
+
+def test_hyphen_attribute_and_boolean_literal() -> None:
+    e = env(outputs={"step": {"is-done": True}})
+    assert evaluate("tasks.step.outputs.is-done == true", e) is True
+
+
+# ── strict names ──────────────────────────────────────────────────────────────
+
+def test_missing_env_is_none() -> None:
+    assert evaluate("env.NOT_SET", env()) is None
+
+
+def test_undefined_input_raises_with_available_names() -> None:
+    with pytest.raises(ExpressionError) as exc:
+        evaluate("inputs.nme", env(inputs={"name": "x"}))
+    assert "'inputs.nme' is not defined (available: name)" in exc.value.message
+
+
+def test_unknown_task_raises() -> None:
+    with pytest.raises(ExpressionError):
+        evaluate("tasks.unknown.outputs.files", env(outputs={"known": {"files": []}}))
+
+
+def test_syntax_error_raises() -> None:
+    with pytest.raises(ExpressionError):
+        evaluate("inputs.x ==", env(inputs={"x": 1}))
+
+
+# ── status functions / GitHub if semantics ────────────────────────────────────
+
+@pytest.mark.parametrize("expr, expected", [
+    ("always()", True),
+    ("failure() && inputs.x", True),
+    ("success ()", True),
+    ("inputs.x", False),
+    ("'always()' == inputs.x", False),
+    ("contains(inputs.x, 'failure()')", False),
+])
+def test_has_status_function(expr: str, expected: bool) -> None:
+    assert has_status_function(expr) is expected
+
+
+def test_condition_without_status_function_false_after_failure() -> None:
+    e = env(inputs={"x": True}, job_failed=True)
+    assert evaluate_condition("inputs.x", e) is False
+
+
+def test_condition_without_status_function_true_without_failure() -> None:
+    e = env(inputs={"x": True})
+    assert evaluate_condition("${{ inputs.x }}", e) is True
+
+
+def test_condition_with_failure_after_failure() -> None:
+    e = env(inputs={"x": True}, job_failed=True)
+    assert evaluate_condition("failure() && inputs.x", e) is True

@@ -1,12 +1,14 @@
 import logging
 import os.path
 import shutil
+from pathlib import Path
 from typing import Set
 
 import typer
 from treelib import Tree
 
 from prepare_assignment.core.preparer import __prepare_tasks
+from prepare_assignment.core.versions import get_git_url, is_fixed_version
 from prepare_assignment.data.task_definition import TaskDefinition
 from prepare_assignment.data.task_properties import TaskProperties
 from prepare_assignment.utils.dependency import get_dependencies
@@ -42,12 +44,29 @@ def update(task: str, recursive: bool) -> None:
     dependencies: Set[TaskProperties] = get_dependencies(props) if recursive else {props}
     # TODO: use topological sort to make sure the order we remove and reinstall is the most efficient
     for dep in dependencies:
-        # Only update if version is 'latest'
+        # Only update versions that can move (latest, main, v1, branches), not exact tags or commits
         # Tags in git are not immutable, but we ignore that for now
-        if dep.version in ("latest", "main"):
-            # Easiest way is to just remove and reinstall
-            shutil.rmtree(dep.task_path)
-            add(str(dep))
+        if not is_fixed_version(get_git_url(dep), dep.version):
+            __reinstall(dep)
+
+
+def __reinstall(props: TaskProperties) -> None:
+    """
+    Reinstall a task, if the installation fails the previous installation is restored
+    """
+    if not os.path.isdir(props.task_path):
+        add(str(props))
+        return
+    backup = Path(f"{props.task_path}.backup")
+    shutil.rmtree(backup, ignore_errors=True)
+    os.replace(props.task_path, backup)
+    try:
+        add(str(props))
+    except Exception:
+        shutil.rmtree(props.task_path, ignore_errors=True)
+        os.replace(backup, props.task_path)
+        raise
+    shutil.rmtree(backup, ignore_errors=True)
 
 
 def remove_all() -> None:
@@ -80,7 +99,7 @@ def info(task: str) -> None:
         logger.error(f"Path '{props.definition_path}' doesn't exist")
         raise typer.Abort()
     yaml = YAML_LOADER.load(props.definition_path)
-    task_def = TaskDefinition.of(yaml, props.definition_path)
+    task_def = TaskDefinition.of(yaml, props.task_path)
     print(task_def)
 
 

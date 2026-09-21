@@ -1,11 +1,11 @@
 import json
 import logging
 from json import JSONDecodeError
-from typing import List
+from typing import Any, List
 from urllib.parse import unquote_plus
 
-from prepare_assignment.data.constants import TYPE_MAPPING
 from prepare_assignment.data.job_environment import JobEnvironment
+from prepare_assignment.data.types import is_of_type
 
 logger = logging.getLogger("tasks")
 
@@ -17,7 +17,9 @@ def __handle_message(message: str) -> str:
 def handle_set_failed(environment: JobEnvironment, params: List[str]) -> None:
     if len(params) < 1:
         raise AssertionError(f"Missing required message for 'set_failed'")
-    logger.error(__handle_message(params[0]))
+    message = __handle_message(params[0])
+    logger.error(message)
+    environment.task_errors.append(message)
 
 
 def handle_set_output(environment: JobEnvironment, params: List[str]) -> None:
@@ -25,7 +27,7 @@ def handle_set_output(environment: JobEnvironment, params: List[str]) -> None:
         logger.warning("'set-output' is not supported for shell commands and will be ignored")
         return
     if len(params) < 2:
-        raise AssertionError(f"Missing required params for 'set_failed'")
+        raise AssertionError(f"Missing required params for 'set-output'")
     try:
         output = json.loads(params[1])
     except JSONDecodeError:
@@ -37,8 +39,7 @@ def handle_set_output(environment: JobEnvironment, params: List[str]) -> None:
         if definition is None:
             logger.warning(f"Trying to set output '{key}', but is not defined in task. Skipping for now.")
             continue
-        expected_type = TYPE_MAPPING.get(definition.type, None)
-        if expected_type is None or not isinstance(value, expected_type):
+        if not is_of_type(value, definition.type, definition.items):
             logger.warning(f"Output '{key}' is of type '{type(value)}', but expected '{definition.type}'")
             continue
         environment.outputs[environment.current_task.key][key] = value  # type: ignore
@@ -46,7 +47,7 @@ def handle_set_output(environment: JobEnvironment, params: List[str]) -> None:
 
 def handle_error(environment: JobEnvironment, params: List[str]) -> None:
     if len(params) < 1:
-        raise AssertionError(f"Missing required message for 'warning'")
+        raise AssertionError(f"Missing required message for 'error'")
     logger.error(__handle_message(params[0]))
 
 
@@ -68,17 +69,42 @@ def handle_debug(environment: JobEnvironment, params: List[str]) -> None:
     logger.debug(__handle_message(params[0]))
 
 
+def _env_value_to_string(value: Any) -> str:
+    # Mirrors prepare_toolbox.utils.convert_to_string, so the task and subsequent steps see the same value
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (int, float, bool)):
+        return str(value)
+    return json.dumps(value)
+
+
 def handle_set_env(environment: JobEnvironment, params: List[str]) -> None:
+    """
+    Set environment variables for all subsequent steps.
+
+    Two formats are supported:
+    - ``[name, json(value)]``: the value must be a JSON string
+    - ``["", json({name: value, ...})]``: the format emitted by prepare-toolbox's ``set_env``,
+      non-string values are converted to strings
+    """
     if len(params) < 2:
         raise AssertionError(f"Missing required params for 'set-env'")
-    name = unquote_plus(params[0])
+    name = unquote_plus(params[0]).strip()
     try:
         value = json.loads(params[1])
     except JSONDecodeError:
         raise AssertionError(f"'set-env' expects a JSON-encoded value as second param")
-    if not isinstance(value, str):
-        raise AssertionError(f"'set-env' expects a string value")
-    environment.environment[name] = value
+    if name:
+        if not isinstance(value, str):
+            raise AssertionError(f"'set-env' expects a string value")
+        environment.environment[name] = value
+        return
+    if not isinstance(value, dict):
+        raise AssertionError(f"'set-env' expects a variable name or a dictionary of key, value pairs")
+    for key, val in value.items():
+        if not isinstance(key, str) or not key:
+            raise AssertionError(f"'set-env' expects non-empty variable names")
+        environment.environment[key] = _env_value_to_string(val)
 
 
 COMMAND_MAPPING = {

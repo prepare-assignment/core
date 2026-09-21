@@ -38,10 +38,10 @@ def display_remove(
 
 @app.command("update")
 def display_update(
-        task: Annotated[str, typer.Argument(help="The task to remove")],
+        task: Annotated[str, typer.Argument(help="The task to update")],
         recursive: Annotated[
             bool,
-            typer.Option("-r", "--recursive", help="Recursively remove dependencies as well")
+            typer.Option("-r", "--recursive", help="Recursively update dependencies as well")
         ] = False) -> None:
     """
     Update a task

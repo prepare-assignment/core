@@ -3,6 +3,8 @@ from typing import Dict
 
 from prepare_assignment.data.constants import LOG_LEVEL_TRACE
 
+_HANDLER_MARKER = "_prepare_handler"
+
 
 class ColourFormatter(logging.Formatter):
     """
@@ -66,7 +68,12 @@ def set_logger_level(
     :param prefix: set prefix for logger message
     :return: None
     """
+    # Remove handlers added by a previous call, so calling this multiple times doesn't duplicate output
+    for existing in list(logger.handlers):
+        if getattr(existing, _HANDLER_MARKER, False):
+            logger.removeHandler(existing)
     handler = logging.StreamHandler()
+    setattr(handler, _HANDLER_MARKER, True)
     if add_colours:
         handler.setFormatter(ColourFormatter(prefix, debug_linenumbers))
     if verbosity == 0:
@@ -98,6 +105,12 @@ def add_logging_level(level_name: str, level_value: int, function_name: str) -> 
     :param function_name: the name of the logging function
     :return: None
     """
+    # Adding the exact same level again is a no-op (e.g. when prepare is invoked multiple times in one process)
+    if (getattr(logging, level_name, None) == level_value
+            and getattr(logging, function_name, None) is not None
+            and getattr(logging.getLoggerClass(), function_name, None) is not None
+            and logging.getLevelName(level_value) == level_name):
+        return
     if hasattr(logging, level_name):
         raise AttributeError(f"Logging level '{level_name}' is already defined on logging")
     if hasattr(logging, function_name):

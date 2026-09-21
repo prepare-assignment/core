@@ -15,13 +15,13 @@ from prepare_assignment.utils.logger import add_logging_level, set_logger_level
 from prepare_assignment.utils.yml_loader import YAML_LOADER
 
 
-def __get_prepare_file(file: Optional[str]) -> str:
+def get_prepare_file(file: Optional[str]) -> str:
     """
     Try and find the correct prepare_assignment.y(a)ml
     :param file: file name provided by the user
     :return: path to file
     :raises FileNotFoundError: if file doesn't exist
-    :raises AssertionError: if there is both a prepare_assignment.yml and a prepare_assignment.yml
+    :raises AssertionError: if there is both a prepare.yml and a prepare.yaml
                             and no file is provided by the user
     :raises FileNotFoundError: if the provided 'file' is not a file
     """
@@ -30,7 +30,7 @@ def __get_prepare_file(file: Optional[str]) -> str:
         if len(files) == 0:
             raise FileNotFoundError("No prepare.yml file found in working directory")
         elif len(files) > 1:
-            raise AssertionError("There is both a prepare.yml and a prepare.yml,"
+            raise AssertionError("There is both a prepare.yml and a prepare.yaml,"
                                  " use the -f flag to specify which file to use")
         file = files[0]
     else:
@@ -51,7 +51,7 @@ def prepare(file_name: Optional[str], env_vars: Optional[Dict[str, str]] = None)
 
     try:
         # Get the prepare_assignment.yml file
-        file = __get_prepare_file(file_name)
+        file = get_prepare_file(file_name)
         logger.debug(f"Found prepare_assignment config file at: {file}")
 
         # Load the file

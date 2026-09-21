@@ -14,7 +14,7 @@ yaml = dict(name='Test', jobs={'prepare': [{'name': 'test composite', 'uses': 'c
                                             {'name': 'remove', 'uses': 'remove', 'id': 'remove',
                                              'with': {'input': ['out', '*.zip'], 'force': True, 'recursive': True}},
                                             {'name': 'run command',
-                                             'run': "echo '${{ jobs.remove.outputs.files }}' | jq"}]})
+                                             'run': "echo '${{ tasks.remove.outputs.files }}' | jq"}]})
 
 mapping = {
     'prepare-assignment/remove@latest': PythonTaskDefinition(id='remove', name='Remove files', description='Remove files', inputs=[TaskInputDefinition(name='force', description='Ignore nonexistent files and arguments', required=False, type='boolean', default=False, items=None), TaskInputDefinition(name='input', description='Files (glob) to remove', required=True, type='array', default=None, items='string'), TaskInputDefinition(name='recursive', description='Whether to recursively remove all subdirectories', required=False, type='boolean', default=False, items=None)], outputs={'files': TaskOutputDefinition(description='Matched globs that have been removed', type='array', items='string')}, path='', main='main.py'),
@@ -37,6 +37,22 @@ class MockedPopen:
     @property
     def stdout(self):
         return [":PA:error:PA:error message\n"]
+
+    @property
+    def stderr(self):
+        return []
+
+
+class ScriptRecordingPopen(MockedPopen):
+    """Records the script of run steps (the temporary script file is removed after execution)"""
+    scripts: List[str] = []
+
+    def __init__(self, args, **kwargs):
+        super().__init__(args, **kwargs)
+        path = args[-1] if isinstance(args, list) else ""
+        if path.endswith(".sh"):
+            with open(path, encoding="utf-8") as handle:
+                ScriptRecordingPopen.scripts.append(handle.read())
 
 
 class MockedPopenFail(MockedPopen):
@@ -374,3 +390,184 @@ def test_set_env_inside_composite_propagates_to_next_task(mocker: MockerFixture)
     run(Prepare.of(_composite_then_task_yaml), mapping)
     assert mock.call_count == 2
     assert factory.captured[1].get("COMPOSITE_VAR") == "from-composite"  # type: ignore
+
+
+# ── command failures ──────────────────────────────────────────────────────────
+
+def test_malformed_command_fails_task_without_crash(mocker: MockerFixture) -> None:
+    """A malformed command fails the step (TaskExecutionError), it does not crash with AssertionError."""
+    mocker.patch("prepare_assignment.core.runner.tasks_logger")
+    mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
+    bad_line = f"{DEMARCATION}set-env{DEMARCATION}MY_VAR{DEMARCATION}not-json\n"
+    factory = _make_popen_factory([[bad_line], []])
+    mock.side_effect = factory
+    with pytest.raises(TaskExecutionError) as exc:
+        run(Prepare.of(_two_tasks_yaml), mapping)
+    assert "Job 'prepare' failed" in str(exc.value)
+    # The second task is skipped because the first failed
+    assert mock.call_count == 1
+
+
+def test_set_failed_with_exit_zero_fails_task(mocker: MockerFixture) -> None:
+    mocker.patch("prepare_assignment.core.runner.tasks_logger")
+    mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
+    failed_line = f"{DEMARCATION}set-failed{DEMARCATION}oops\n"
+    factory = _make_popen_factory([[failed_line], []])
+    mock.side_effect = factory
+    with pytest.raises(TaskExecutionError):
+        run(Prepare.of(_two_tasks_yaml), mapping)
+    assert mock.call_count == 1
+
+
+def test_task_errors_reset_between_steps(mocker: MockerFixture) -> None:
+    """An error of a step with if: always() must not leak into the next step."""
+    yaml_always = dict(name='Test', jobs={'prepare': [
+        {'name': 'a', 'uses': 'remove', 'id': 'a', 'with': {'input': ['out']}},
+        {'name': 'b', 'uses': 'remove', 'id': 'b', 'if': 'always()', 'with': {'input': ['out']}},
+    ]})
+    mocker.patch("prepare_assignment.core.runner.tasks_logger")
+    mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
+    failed_line = f"{DEMARCATION}set-failed{DEMARCATION}oops\n"
+    factory = _make_popen_factory([[failed_line], []])
+    mock.side_effect = factory
+    logged = mocker.patch("prepare_assignment.core.runner.logger")
+    with pytest.raises(TaskExecutionError):
+        run(Prepare.of(yaml_always), mapping)
+    assert mock.call_count == 2
+    # Only the first step logged a failure
+    errors = [str(c.args[0]) for c in logged.error.call_args_list]
+    assert sum("failed: oops" in e for e in errors) == 1
+
+
+# ── if semantics / expression errors ──────────────────────────────────────────
+
+def test_if_without_status_function_skipped_after_failure(mocker: MockerFixture) -> None:
+    yaml_if = dict(name='Test', jobs={'prepare': [
+        {'name': 'a', 'uses': 'remove', 'id': 'a', 'with': {'input': ['out']}},
+        {'name': 'b', 'uses': 'remove', 'id': 'b', 'if': "env.MISSING == None",
+         'with': {'input': ['out']}},
+    ]})
+    mocker.patch("prepare_assignment.core.runner.tasks_logger")
+    mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
+    mock.side_effect = MockedPopenFail
+    with pytest.raises(TaskExecutionError):
+        run(Prepare.of(yaml_if), mapping)
+    assert mock.call_count == 1
+
+
+def test_invalid_if_fails_step(mocker: MockerFixture) -> None:
+    yaml_if = dict(name='Test', jobs={'prepare': [
+        {'name': 'a', 'uses': 'remove', 'id': 'a', 'if': "inputs.typo", 'with': {'input': ['out']}},
+        {'name': 'cleanup', 'uses': 'remove', 'id': 'cleanup', 'if': "always()", 'with': {'input': ['out']}},
+    ]})
+    mocker.patch("prepare_assignment.core.runner.tasks_logger")
+    logged = mocker.patch("prepare_assignment.core.runner.logger")
+    mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
+    mock.side_effect = MockedPopen
+    with pytest.raises(TaskExecutionError):
+        run(Prepare.of(yaml_if), mapping)
+    # Only the cleanup step ran
+    assert mock.call_count == 1
+    assert any("Invalid 'if' for task 'a'" in str(c.args[0]) for c in logged.error.call_args_list)
+
+
+def test_undefined_expression_in_run_fails_step(mocker: MockerFixture) -> None:
+    yaml_run = dict(name='Test', jobs={'prepare': [
+        {'name': 'danger', 'run': 'rm -rf ${{ tasks.typo.outputs.dir }}/x'},
+    ]})
+    mocker.patch("prepare_assignment.core.runner.tasks_logger")
+    mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
+    mock.side_effect = MockedPopen
+    with pytest.raises(TaskExecutionError):
+        run(Prepare.of(yaml_run), mapping)
+    assert mock.call_count == 0
+
+
+def test_declared_output_not_set_is_empty(mocker: MockerFixture) -> None:
+    """Referencing a declared output that the task didn't set is allowed (renders empty)."""
+    yaml_run = dict(name='Test', jobs={'prepare': [
+        {'name': 'remove', 'uses': 'remove', 'id': 'remove', 'with': {'input': ['out']}},
+        {'name': 'echo', 'run': "echo '${{ tasks.remove.outputs.files }}'"},
+    ]})
+    mocker.patch("prepare_assignment.core.runner.tasks_logger")
+    mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
+    mock.side_effect = ScriptRecordingPopen
+    ScriptRecordingPopen.scripts = []
+    run(Prepare.of(yaml_run), mapping)
+    assert mock.call_count == 2
+    assert ScriptRecordingPopen.scripts == ["echo ''"]
+
+
+def test_composite_undeclared_input_fails(mocker: MockerFixture) -> None:
+    bad_mapping = dict(mapping)
+    bad_mapping['prepare-assignment/composite@latest'] = CompositeTaskDefinition(
+        id='composite', name='c', description='c', inputs=[], outputs={}, path='',  # type: ignore
+        tasks=[{'name': 'echo', 'run': 'echo ${{ inputs.nope }}'}])
+    yaml_c = dict(name='Test', jobs={'prepare': [{'name': 'c', 'uses': 'composite', 'with': {}}]})
+    mocker.patch("prepare_assignment.core.runner.tasks_logger")
+    mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
+    mock.side_effect = MockedPopen
+    with pytest.raises(TaskExecutionError):
+        run(Prepare.of(yaml_c), bad_mapping)
+    assert mock.call_count == 0
+
+
+def test_composite_declared_input_without_value_is_empty(mocker: MockerFixture) -> None:
+    c_mapping = dict(mapping)
+    c_mapping['prepare-assignment/composite@latest'] = CompositeTaskDefinition(
+        id='composite', name='c', description='c', outputs={}, path='',  # type: ignore
+        inputs=[TaskInputDefinition(name='opt', description='', required=False, type='string')],
+        tasks=[{'name': 'echo', 'run': 'echo "${{ inputs.opt }}"'}])
+    yaml_c = dict(name='Test', jobs={'prepare': [{'name': 'c', 'uses': 'composite', 'with': {}}]})
+    mocker.patch("prepare_assignment.core.runner.tasks_logger")
+    mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
+    mock.side_effect = MockedPopen
+    run(Prepare.of(yaml_c), c_mapping)
+    assert mock.call_count == 1
+
+
+# ── composite outputs ─────────────────────────────────────────────────────────
+
+def _composite_with_output_mapping() -> Dict[str, Any]:
+    c_mapping: Dict[str, Any] = dict(mapping)
+    c_mapping['prepare-assignment/composite@latest'] = CompositeTaskDefinition(
+        id='composite', name='c', description='c', inputs=[], path='',  # type: ignore
+        outputs={'removed': TaskOutputDefinition(description='d', type='array', items='string',
+                                                 value='${{ tasks.inner.outputs.files }}'),
+                 'no-value': TaskOutputDefinition(description='d', type='string', items=None)},
+        tasks=[{'name': 'inner', 'id': 'inner', 'uses': 'remove', 'with': {'input': ['out']}}])
+    return c_mapping
+
+
+def test_composite_output_value_is_available(mocker: MockerFixture) -> None:
+    yaml_c = dict(name='Test', jobs={'prepare': [
+        {'name': 'c', 'id': 'c', 'uses': 'composite', 'with': {}},
+        {'name': 'echo', 'run': "echo '${{ tasks.c.outputs.removed }}' '${{ tasks.c.outputs.no-value }}'"},
+    ]})
+    set_output = f'{DEMARCATION}set-output{DEMARCATION}{DEMARCATION}{{"files": ["out"]}}\n'
+    mocker.patch("prepare_assignment.core.runner.tasks_logger")
+    mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
+    factory = _make_popen_factory([[set_output], []])
+    ScriptRecordingPopen.scripts = []
+
+    def popen(args: Any, **kwargs: Any) -> Any:
+        ScriptRecordingPopen(args, **kwargs)
+        return factory(args, **kwargs)
+
+    mock.side_effect = popen
+    run(Prepare.of(yaml_c), _composite_with_output_mapping())
+    assert mock.call_count == 2
+    assert ScriptRecordingPopen.scripts == ["""echo '["out"]' ''"""]
+
+
+def test_composite_failed_outputs_are_none(mocker: MockerFixture) -> None:
+    yaml_c = dict(name='Test', jobs={'prepare': [
+        {'name': 'c', 'id': 'c', 'uses': 'composite', 'with': {}},
+        {'name': 'echo', 'if': 'failure()', 'run': "echo '${{ tasks.c.outputs.removed }}'"},
+    ]})
+    mocker.patch("prepare_assignment.core.runner.tasks_logger")
+    mock = mocker.patch("prepare_assignment.core.runner.subprocess.Popen")
+    mock.side_effect = [MockedPopenFail(None), MockedPopen(None)]
+    with pytest.raises(TaskExecutionError):
+        run(Prepare.of(yaml_c), _composite_with_output_mapping())
+    assert mock.call_count == 2

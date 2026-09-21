@@ -1,11 +1,9 @@
-import json
 import os.path
 from enum import Enum
 from typing import Dict, Any
 
 import dacite
 from dacite import from_dict
-from importlib_resources import files
 from pathlib import Path
 
 from jsonschema import validate, ValidationError
@@ -13,6 +11,7 @@ from jsonschema import validate, ValidationError
 from prepare_assignment.data.config import Config, Core
 from prepare_assignment.data.errors import ValidationError as VE
 from prepare_assignment.utils.paths import get_config_path
+from prepare_assignment.utils.resources import load_schema
 from prepare_assignment.utils.yml_loader import YAML_LOADER
 
 
@@ -25,8 +24,7 @@ def __convert_keys(obj: Any) -> Any:
 
 
 def __validate_config(config_path: Path, config: Dict[str, Any]) -> None:
-    schema_path = files().joinpath('../schemas/config.schema.json')
-    schema: Dict[str, Any] = json.loads(schema_path.read_text())
+    schema = load_schema("config.schema.json")
 
     # Validate config.yml
     try:

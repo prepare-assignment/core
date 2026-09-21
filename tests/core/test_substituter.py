@@ -4,6 +4,7 @@ import logging
 import pytest
 
 from prepare_assignment.core.subsituter import substitute_all
+from prepare_assignment.data.errors import ExpressionError
 from prepare_assignment.data.job_environment import JobEnvironment
 
 
@@ -62,15 +63,45 @@ def test_no_substitute() -> None:
     assert values["test"] == 'nothing to see here'
 
 
-def test_invalid_substitute(caplog: pytest.LogCaptureFixture) -> None:
+def test_invalid_substitute_raises() -> None:
     values = {
         'test': '${{ tasks.step1.outputs.test }}'
     }
     env = JobEnvironment(inputs={}, outputs={}, environment={})
-    with caplog.at_level(logging.DEBUG):
+    with pytest.raises(ExpressionError) as exc:
         substitute_all(values, env)
-    assert values["test"] == ''
-    assert 'tasks.step1.outputs.test' in caplog.text
+    assert 'tasks.step1' in exc.value.message
+
+
+def test_invalid_substitute_in_mixed_string_raises() -> None:
+    """A typo must never silently become an empty string (e.g. `rm -rf ${{ typo }}/x`)."""
+    values = {'test': 'rm -rf ${{ inputs.typo }}/x'}
+    env = JobEnvironment(inputs={"dir": "out"}, outputs={}, environment={})
+    with pytest.raises(ExpressionError) as exc:
+        substitute_all(values, env)
+    assert "'inputs.typo' is not defined" in exc.value.message
+    assert "dir" in exc.value.message
+
+
+def test_substitute_missing_env_is_empty() -> None:
+    values = {'test': 'value: ${{ env.NOT_SET }}'}
+    env = JobEnvironment(inputs={}, outputs={}, environment={})
+    substitute_all(values, env)
+    assert values['test'] == 'value: '
+
+
+def test_substitute_declared_but_unset_output_is_empty() -> None:
+    values = {'test': '${{ tasks.step1.outputs.files }}'}
+    env = JobEnvironment(inputs={}, outputs={"step1": {"files": None}}, environment={})
+    substitute_all(values, env)
+    assert values['test'] == ''
+
+
+def test_substitute_none_in_list_is_dropped() -> None:
+    values = {'test': ['a', '${{ inputs.extra }}']}
+    env = JobEnvironment(inputs={"extra": None}, outputs={}, environment={})
+    substitute_all(values, env)
+    assert values['test'] == ['a']
 
 
 def test_substitute_env_var() -> None:

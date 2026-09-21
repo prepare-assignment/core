@@ -1,5 +1,6 @@
 import os.path
 import sys
+from pathlib import Path
 from typing import Dict, List, Optional
 
 import typer
@@ -8,11 +9,13 @@ from typing_extensions import Annotated
 from prepare_assignment import __version__
 from prepare_assignment.cli.task import app as task_app
 from prepare_assignment.cli.tasks import app as tasks_app
-from prepare_assignment.core.main import prepare
+from prepare_assignment.core.check import check as check_tasks, check_all, tasks_in_prepare
+from prepare_assignment.core.main import prepare, get_prepare_file
 from prepare_assignment.data.config import GitMode
 from prepare_assignment.data.constants import CONFIG
 from prepare_assignment.utils.paths import get_config_path
 from prepare_assignment.utils.virtual_env import get_virtualenv_name
+from prepare_assignment.utils.yml_loader import YAML_LOADER
 
 app = typer.Typer(invoke_without_command=True)
 app.add_typer(task_app, name="task")
@@ -90,3 +93,37 @@ def run(
         prepare(file_name, env_vars)
     except Exception:
         raise typer.Exit(code=1)
+
+
+@app.command()
+def check(
+    file_name: Annotated[
+        Optional[str],
+        typer.Option("--file", "-f", help="Configuration file")
+    ] = None,
+    all_tasks: Annotated[
+        bool,
+        typer.Option("--all", "-a", help="Check all installed tasks instead of the tasks used in the prepare file")
+    ] = False,
+    git: Annotated[
+        GitMode,
+        typer.Option(case_sensitive=False, help="Mode for git, options are 'ssh' (default) or 'https'")
+    ] = CONFIG.core.git_mode,
+):
+    """
+    Check which tasks have newer versions available
+    """
+    CONFIG.core.git_mode = git  # type: ignore
+    if all_tasks:
+        statuses = check_all()
+    else:
+        try:
+            file = get_prepare_file(file_name)
+        except (FileNotFoundError, AssertionError) as e:
+            typer.echo(str(e), err=True)
+            raise typer.Exit(code=1)
+        statuses = check_tasks(tasks_in_prepare(YAML_LOADER.load(Path(file))))
+    if len(statuses) == 0:
+        typer.echo("No tasks to check")
+    for status in statuses:
+        typer.echo(str(status))

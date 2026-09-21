@@ -119,3 +119,62 @@ def test_handle_set_output_no_task_definition_is_ignored(caplog: pytest.LogCaptu
         handle_set_output(shell_env, ["test", json.dumps({"test": "value"})])
     assert "shell" in caplog.text.lower() or "not supported" in caplog.text.lower()
     assert shell_env.outputs == {}
+
+
+def test_handle_set_failed_records_task_error() -> None:
+    fresh_env = JobEnvironment(environment={}, outputs={}, inputs={})
+    handle_set_failed(fresh_env, ["something+went+wrong"])
+    assert fresh_env.task_errors == ["something went wrong"]
+
+
+def test_handle_set_env_toolbox_format() -> None:
+    fresh_env = JobEnvironment(environment={}, outputs={}, inputs={})
+    handle_set_env(fresh_env, ["", json.dumps({"A": "x", "B": 1, "C": True, "D": ["y"]}) + "\n"])
+    assert fresh_env.environment == {"A": "x", "B": "1", "C": "True", "D": '["y"]'}
+
+
+def test_handle_set_env_toolbox_format_not_a_dict() -> None:
+    fresh_env = JobEnvironment(environment={}, outputs={}, inputs={})
+    with pytest.raises(AssertionError) as exc:
+        handle_set_env(fresh_env, ["", json.dumps(["A"])])
+    assert "dictionary" in str(exc.value)
+
+
+def test_handle_set_env_toolbox_format_empty_key() -> None:
+    fresh_env = JobEnvironment(environment={}, outputs={}, inputs={})
+    with pytest.raises(AssertionError):
+        handle_set_env(fresh_env, ["", json.dumps({"": "x"})])
+
+
+def test_toolbox_set_env_contract(capsys: pytest.CaptureFixture, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The line the real prepare-toolbox emits must be understood by core."""
+    from prepare_toolbox.core import set_env
+    from prepare_assignment.core import runner
+    monkeypatch.delenv("CONTRACT_VAR", raising=False)
+    set_env("CONTRACT_VAR", "value")
+    monkeypatch.delenv("CONTRACT_VAR", raising=False)
+    line = capsys.readouterr().out
+    fresh_env = JobEnvironment(environment={}, outputs={}, inputs={})
+    runner.__process_output_line(line, fresh_env)  # type: ignore[attr-defined]
+    assert fresh_env.environment == {"CONTRACT_VAR": "value"}
+    assert fresh_env.task_errors == []
+
+
+def test_handle_set_output_integer_for_number() -> None:
+    number_output = TaskOutputDefinition(description="n", items=None, type="number")
+    definition = PythonTaskDefinition(outputs={'n': number_output}, description="t", inputs=[], id="t", name="t",
+                                      path="path", main="main.py")  # type: ignore
+    fresh_env = JobEnvironment(environment={}, outputs={'id': {}}, inputs={},
+                               current_task_definition=definition, current_task=task)
+    handle_set_output(fresh_env, ["", json.dumps({"n": 3})])
+    assert fresh_env.outputs['id']['n'] == 3
+
+
+def test_handle_set_output_wrong_item_type(caplog: pytest.LogCaptureFixture) -> None:
+    list_output = TaskOutputDefinition(description="l", items="string", type="array")
+    definition = PythonTaskDefinition(outputs={'l': list_output}, description="t", inputs=[], id="t", name="t",
+                                      path="path", main="main.py")  # type: ignore
+    fresh_env = JobEnvironment(environment={}, outputs={'id': {}}, inputs={},
+                               current_task_definition=definition, current_task=task)
+    handle_set_output(fresh_env, ["", json.dumps({"l": ["a", 1]})])
+    assert 'l' not in fresh_env.outputs['id']
