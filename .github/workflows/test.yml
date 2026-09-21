@@ -11,7 +11,39 @@ on:
     branches: [ "main" ]
 
 jobs:
+  # Skip the tests if a PR only changes documentation. The jobs are skipped instead of the whole workflow
+  # (paths-ignore), because a required check that never reports blocks the PR, see the 'tests' job.
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - id: filter
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          files=$(gh pr diff "$PR" --name-only --repo "$REPO")
+          echo "Changed files:"
+          echo "$files"
+          code=false
+          # Fail safe: run the tests if the changed files cannot be determined
+          [ -z "$files" ] && code=true
+          while IFS= read -r file; do
+            case "$file" in
+              *.md|LICENSE|.github/ISSUE_TEMPLATE/*) ;;
+              *) code=true ;;
+            esac
+          done <<< "$files"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
   test:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -44,6 +76,8 @@ jobs:
         report_paths: tests.xml
 
   typecheck:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     strategy:
       matrix:
         python-version: [ "3.12" ]
@@ -61,3 +95,18 @@ jobs:
         run: uv sync --locked --group test
       - name: Type checker
         run: uv run mypy prepare_assignment
+
+  # The only required check (next to the PR title): succeeds if all tests passed or were skipped because only
+  # documentation changed. Skipped matrix jobs don't report their individual checks (e.g. 'test (3.12, ...)').
+  tests:
+    if: always()
+    needs: [changes, test, typecheck]
+    runs-on: ubuntu-latest
+    steps:
+      - name: All tests passed or were skipped
+        env:
+          FAILED: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS"
+          [ "$FAILED" = "false" ]
