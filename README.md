@@ -9,7 +9,7 @@ Prepare assignment is a GitHub Actions inspired helper tool to prepare assignmen
 
 ## Installation
 
-Prepare-assignment is available from [PyPI](https://pypi.org/).
+Prepare-assignment is available from [PyPI](https://pypi.org/project/prepare-assignment/).
 
 
 ```bash
@@ -26,13 +26,13 @@ To execute a `prepare.yml` simply run `prepare run` from the same directory.
 
 ### Command line interface
 
-Use `prepare --help` to which commands and flags are available.
+Use `prepare --help` to see which commands and flags are available.
 
 ## Example `prepare.yml`
 
 First we need to have tasks available that can be executed. Take for example a look at the [remove](https://github.com/prepare-assignment/remove) task.
 
-The tests use a [testproject](https://github.com/prepare-assignment/core/tree/tests/testproject), which contains an example of a `prepare.yml`, see below for convenience.
+The tests use a [testproject](https://github.com/prepare-assignment/core/tree/main/tests/testproject), which contains an example of a `prepare.yml`, see below for convenience.
 
 ```yaml
 name: Test project
