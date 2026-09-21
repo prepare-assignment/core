@@ -9,51 +9,104 @@
     },
     "jobs": {
       "type": "object",
-        "patternProperties": {
-          "^[_a-zA-Z][a-zA-Z0-9_-]*$": {
-            "type": "array",
-            "items": {
-              "anyOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "name": {
-                      "type": "string"
-                    },
-                    "id": {
-                      "type": "string"
-                    },
-                    "if": {
-                      "type": "string"
-                    },
-                    "uses": {
+      "patternProperties": {
+        "^[_a-zA-Z][a-zA-Z0-9_-]*$": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "if": {
+                    "type": "string"
+                  },
+                  "working-directory": {
+                    "description": "Working directory of the step (relative to the prepare file)",
+                    "type": "string"
+                  },
+                  "env": {
+                    "description": "Environment variables for this step only",
+                    "type": "object",
+                    "additionalProperties": {
                       "type": "string"
                     }
                   },
-                  "required": ["name", "uses"]
+                  "continue-on-error": {
+                    "description": "Do not fail the job if this step fails",
+                    "type": "boolean"
+                  },
+                  "uses": {
+                    "type": "string"
+                  },
+                  "with": {
+                    "type": "object"
+                  }
                 },
-                {
-                  "type": "object",
-                  "properties": {
-                    "name": {
-                      "type": "string"
-                    },
-                    "id": {
-                      "type": "string"
-                    },
-                    "if": {
-                      "type": "string"
-                    },
-                    "run": {
+                "required": [
+                  "name",
+                  "uses"
+                ]
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "if": {
+                    "type": "string"
+                  },
+                  "working-directory": {
+                    "description": "Working directory of the step (relative to the prepare file)",
+                    "type": "string"
+                  },
+                  "env": {
+                    "description": "Environment variables for this step only",
+                    "type": "object",
+                    "additionalProperties": {
                       "type": "string"
                     }
                   },
-                  "required": ["name", "run"]
-                }
-              ]
-            }
+                  "continue-on-error": {
+                    "description": "Do not fail the job if this step fails",
+                    "type": "boolean"
+                  },
+                  "run": {
+                    "type": "string"
+                  },
+                  "shell": {
+                    "description": "Shell used to execute 'run'",
+                    "type": "string",
+                    "enum": [
+                      "bash",
+                      "sh",
+                      "pwsh",
+                      "powershell",
+                      "cmd",
+                      "python"
+                    ]
+                  }
+                },
+                "required": [
+                  "name",
+                  "run"
+                ]
+              }
+            ]
           }
         }
+      }
     }
   },
   "required": [

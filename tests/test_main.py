@@ -64,3 +64,25 @@ def test_run_shorthand_key_value_form(mocker: MockerFixture) -> None:
     mock_prepare.assert_called_once_with(None, {"mode": "production"})
 
 
+
+
+def test_prepare_can_be_called_twice(monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture) -> None:
+    """prepare() used to fail the second time in a process, because the TRACE log level was already defined."""
+    from prepare_assignment.core.main import prepare
+    monkeypatch.chdir(test_project_dir)
+    mocker.patch("prepare_assignment.core.main.prepare_tasks", return_value={})
+    run_mock = mocker.patch("prepare_assignment.core.main.run")
+    prepare("testproject/prepare.yml")
+    monkeypatch.chdir(test_project_dir)
+    prepare("testproject/prepare.yml")
+    assert run_mock.call_count == 2
+
+
+def test_multiple_prepare_files_message(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from prepare_assignment.core.main import prepare
+    (tmp_path / "prepare.yml").write_text("name: a\njobs: {}\n")
+    (tmp_path / "prepare.yaml").write_text("name: a\njobs: {}\n")
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(AssertionError) as exc:
+        prepare(None)
+    assert "both a prepare.yml and a prepare.yaml" in str(exc.value)

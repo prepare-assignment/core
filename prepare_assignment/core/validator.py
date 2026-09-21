@@ -1,31 +1,21 @@
 from __future__ import annotations
 
-import json
 import logging
 import os
 from pathlib import Path
-from typing import Dict, Any, Type
+from typing import Dict, Any
 
-from importlib_resources import files
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 
 from prepare_assignment.data.errors import ValidationError as VE
 from prepare_assignment.data.task_definition import TaskDefinition
+from prepare_assignment.data.types import is_of_type
 from prepare_assignment.utils.default_validator import DefaultValidatingValidator
+from prepare_assignment.utils.resources import load_schema
 from prepare_assignment.utils.yml_loader import YAML_LOADER
 
 logger = logging.getLogger("prepare_assignment")
-
-# Mapping from string to the correct type
-type_map: Dict[str, Type] = {
-    "string": type(''),
-    "integer": type(1),
-    "number": type(1.23),
-    "array": type([]),
-    "boolean": type(True)
-}
-
 
 def validate_prepare(prepare_file: str, prepare: Dict[str, Any]) -> None:
     """
@@ -39,8 +29,7 @@ def validate_prepare(prepare_file: str, prepare: Dict[str, Any]) -> None:
     """
     logger.debug("========== Validating config file")
     # Load the validation jsonschema
-    schema_path = files().joinpath('../schemas/prepare.schema.json')
-    schema: Dict[str, Any] = json.loads(schema_path.read_text())
+    schema = load_schema("prepare.schema.json")
 
     # Validate prepare_assignment.y(a)ml
     try:
@@ -97,8 +86,7 @@ def validate_task_definition(path: str | os.PathLike[str] | os.PathLike) -> Any:
     logger.debug("Validating task definition")
 
     # Load the validation jsonschema
-    schema_path = files().joinpath('../schemas/task.schema.json')
-    schema: Dict[str, Any] = json.loads(schema_path.read_text())
+    schema = load_schema("task.schema.json")
 
     task_definition = load_yaml(path)
 
@@ -128,18 +116,15 @@ def validate_default_values(task: TaskDefinition) -> None:
             continue
 
         # Check that the default type is of the type we expect
-        if not isinstance(input.default, type_map[input.type]):
+        if not is_of_type(input.default, input.type):
             raise VE(
                 f"Unable to verify task '{task.name}', default value for input '{input.name}' is of the wrong type"
                 f", expected '{input.type}', but got '{type(input.default)}'")
 
         # If we expect an array, validate that all elements are of the correct type
         if input.type == "array":
-            # we need to ignore the type here as both PyCharm and mypy don't know we validated the file already and
-            # we know that there myst be option.items when the type is array
-            item_type = type_map[input.items]  # type: ignore
             # noinspection PyTypeChecker
-            for item in input.default:
-                if item_type != type(item):
-                    raise VE(f"Default item: {item}, for input: '{input.name}', should be of type: {item_type}, "
+            for item in input.default:  # type: ignore
+                if not is_of_type(item, input.items):  # type: ignore
+                    raise VE(f"Default item: {item}, for input: '{input.name}', should be of type: {input.items}, "
                              f"but is of type: {type(item)}")

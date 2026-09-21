@@ -1,15 +1,14 @@
 [project]
 name = "prepare-assignment"
-version = "0.3.0"
+version = "0.4.0"
 description = "Prepare assignment"
 authors = [{name = "Bonajo", email = "m.bonajo@fontys.nl"}]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 dependencies = [
     "ruamel-yaml>=0.18.5",
     "jsonschema>=4.21.1",
-    "importlib-resources>=6.1.1",
     "gitpython>=3.1.41",
     "prepare-toolbox==0.4.0",
     "virtualenv>=20.25.0",

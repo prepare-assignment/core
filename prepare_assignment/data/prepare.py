@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import cached_property
 from typing import Dict, Optional, Union, Any, List
 
@@ -15,6 +15,9 @@ class Task(ABC):
     name: str
     id: Optional[str]
     if_: Optional[str]
+    working_directory: Optional[str] = field(default=None, kw_only=True)
+    env: Dict[str, str] = field(default_factory=dict, kw_only=True)
+    continue_on_error: bool = field(default=False, kw_only=True)
 
     @property
     @abstractmethod
@@ -24,6 +27,17 @@ class Task(ABC):
     @staticmethod
     def of(yaml: Dict[str, Any]) -> Task:
         return RunTask.of(yaml) if "run" in yaml else UsesTask.of(yaml)
+
+    @staticmethod
+    def _common(yaml: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "name": yaml["name"],
+            "id": yaml.get("id", None),
+            "if_": yaml.get("if", None),
+            "working_directory": yaml.get("working-directory", None),
+            "env": dict(yaml.get("env", None) or {}),
+            "continue_on_error": yaml.get("continue-on-error", False),
+        }
 
     @cached_property
     def key(self) -> str:
@@ -36,14 +50,14 @@ class Task(ABC):
 @dataclass
 class RunTask(Task):
     run: str
+    shell: Optional[str] = field(default=None, kw_only=True)
 
     @classmethod
     def of(cls, yaml: Dict[str, Any]) -> RunTask:
         return cls(
-            name=yaml["name"],
             run=yaml["run"],
-            id=yaml.get("id", None),
-            if_=yaml.get("if", None)
+            shell=yaml.get("shell", None),
+            **Task._common(yaml)
         )
 
     @property
@@ -59,11 +73,9 @@ class UsesTask(Task):
     @classmethod
     def of(cls, yaml: Dict[str, Any]) -> UsesTask:
         return cls(
-            name=yaml["name"],
             uses=yaml["uses"],
             with_=yaml.get("with", {}),
-            id=yaml.get("id", None),
-            if_=yaml.get("if", None)
+            **Task._common(yaml)
         )
 
     @property

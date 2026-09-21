@@ -26,5 +26,5 @@ def get_all_tasks() -> List[TaskProperties]:
 
 def load_task(props: TaskProperties) -> TaskDefinition:
     yaml = YAML_LOADER.load(props.definition_path)
-    task = TaskDefinition.of(yaml, props.definition_path)
+    task = TaskDefinition.of(yaml, props.task_path)
     return task

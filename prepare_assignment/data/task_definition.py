@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -32,15 +31,13 @@ class TaskInputDefinition:
             items=items
         )
 
-    def to_schema_definition(self) -> str:
-
-        properties = [f'"type": "{self.type}"']
+    def to_schema_definition(self) -> Dict[str, Any]:
+        definition: Dict[str, Any] = {"type": self.type}
         if self.type == "array":
-            properties.append(f'"items": {{ "type": "{self.items}" }}')
+            definition["items"] = {"type": self.items}
         if self.default is not None:
-            properties.append(f'"default": {json.dumps(self.default)}')
-        joined = ",\n  ".join(properties)
-        return f'"{self.name}": {{\n  {joined}\n}}'
+            definition["default"] = self.default
+        return definition
 
     def __str__(self) -> str:
         output = [
@@ -61,14 +58,16 @@ class TaskOutputDefinition:
     description: str
     type: str
     items: Optional[str]
+    # Composite tasks only: expression that is evaluated after all sub-tasks have run
+    value: Optional[str] = None
 
     @classmethod
     def of(cls, yaml: Dict[str, Any]) -> TaskOutputDefinition:
-        items = yaml.get("items", None)
         return cls(
             description=yaml["description"],
             type=yaml["type"],
-            items=items
+            items=yaml.get("items", None),
+            value=yaml.get("value", None)
         )
 
     def __str__(self) -> str:
@@ -78,6 +77,8 @@ class TaskOutputDefinition:
         ]
         if self.items is not None:
             output.append(f"items: {self.items}")
+        if self.value is not None:
+            output.append(f"value: {self.value}")
         return os.linesep.join(output)
 
 

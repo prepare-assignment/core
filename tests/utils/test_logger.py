@@ -88,3 +88,28 @@ def test_colour_formatter(level: int, name: str, control: bool):
     contains_control = '\x1b[' in formatted
     control_correct = contains_control if control else not contains_control
     assert (contains_name and control_correct), "Colour formatter should format correctly"
+
+
+def test_add_same_logging_level_twice_is_noop() -> None:
+    add_logging_level("SAMELEVEL", 3, "samelevel")
+    add_logging_level("SAMELEVEL", 3, "samelevel")
+    assert logging.getLevelName(3) == "SAMELEVEL"
+
+
+def test_add_conflicting_logging_level_raises() -> None:
+    add_logging_level("CONFLICT", 4, "conflict")
+    with pytest.raises(AttributeError):
+        add_logging_level("CONFLICT", 5, "conflict")
+
+
+def test_set_logger_level_twice_does_not_duplicate_handlers() -> None:
+    logger = logging.getLogger("test_no_duplicate_handlers")
+    foreign = logging.NullHandler()
+    logger.addHandler(foreign)
+    set_logger_level(logger, verbosity=1)
+    set_logger_level(logger, verbosity=3)
+    ours = [h for h in logger.handlers if h is not foreign]
+    assert len(ours) == 1
+    assert ours[0].level == logging.DEBUG
+    # Handlers that were not added by prepare are left alone
+    assert foreign in logger.handlers
