@@ -1,28 +1,33 @@
-name: Release Prepare to PyPi
+name: Release
 
+# Fires only on tags pushed by a human: a manual tag cut as an escape hatch.
+# Routine releases come from semantic-release.yml, whose GITHUB_TOKEN-pushed
+# tags deliberately do not trigger this workflow — that is what keeps a
+# release from being published twice.
 on:
   push:
-    branches:
-      - 'releases/**'
-    tags:
-      - 'v*'
+    tags: ["v*"]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
-  release:
-    strategy:
-        matrix:
-          python-version: ["3.11"]
+  version:
+    name: version from tag
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v7
-      # No cache for releases (the default for tag pushes), to prevent cache poisoning
-      - name: Install uv and Python ${{ matrix.python-version }}
-        uses: astral-sh/setup-uv@v10.1.0
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: uv sync
-      - name: Build
-        run: uv build
-      - name: Publish
-        run: uv publish --token ${{ secrets.PYPI_TOKEN }}
+      - id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: version
+    uses: ./.github/workflows/pypi-publish.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+    secrets: inherit

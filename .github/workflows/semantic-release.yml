@@ -1,0 +1,57 @@
+name: Semantic release
+
+on:
+  push:
+    branches: [main]
+
+# Never cancel a release mid-flight: a half-run that has tagged but not yet
+# published would need cleaning up by hand.
+concurrency:
+  group: semantic-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the tag and the GitHub release
+      issues: write # comment "released in vX.Y.Z" on issues
+      pull-requests: write # and on the PRs that fed the release
+    outputs:
+      published: ${{ steps.semantic.outputs.new_release_published }}
+      version: ${{ steps.semantic.outputs.new_release_version }}
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # semantic-release walks back to the previous tag to decide the bump,
+          # so a shallow clone makes it compute the wrong version.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      # Pinned to an exact version: this action publishes no floating major
+      # tags, so @v6 would not resolve. All three plugins in .releaserc.json
+      # ship with the semantic-release core it bundles.
+      - name: Semantic release
+        id: semantic
+        uses: cycjimmy/semantic-release-action@v6.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # The tag above was pushed with GITHUB_TOKEN, so it will not trigger
+  # release.yml. Publish to PyPI here instead.
+  publish:
+    needs: release
+    if: needs.release.outputs.published == 'true'
+    uses: ./.github/workflows/pypi-publish.yml
+    with:
+      version: ${{ needs.release.outputs.version }}
+    secrets: inherit
