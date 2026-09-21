@@ -9,7 +9,7 @@ requires-python = ">=3.11"
 dependencies = [
     "ruamel-yaml>=0.18.5",
     "jsonschema>=4.21.1",
-    "gitpython>=3.1.41",
+    "gitpython>=3.1.59",
     "prepare-toolbox==0.4.0",
     "virtualenv>=20.25.0",
     "typer==0.17.3",
@@ -31,7 +31,7 @@ build-backend = "hatchling.build"
 test = [
     "mypy>=1.1.1",
     "types-jsonschema>=4.17.0.6",
-    "pytest>=7.4.0",
+    "pytest>=9.0.3",
     "pytest-cov>=4.1.0",
     "pytest-mock>=3.11.1",
 ]
