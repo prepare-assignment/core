@@ -1,10 +1,9 @@
 import os.path
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Annotated, Dict, List, Optional
 
 import typer
-from typing_extensions import Annotated
 
 from prepare_assignment import __version__
 from prepare_assignment.cli.task import app as task_app
