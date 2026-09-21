@@ -22,14 +22,14 @@ jobs:
       contents: read
       checks: write
     steps:
-    - uses: actions/checkout@v4
-    - name: Install uv
-      uses: astral-sh/setup-uv@v7
+    - uses: actions/checkout@v7
+    - name: Install uv and Python ${{ matrix.python-version }}
+      uses: astral-sh/setup-uv@v10.1.0
       with:
+        python-version: ${{ matrix.python-version }}
         enable-cache: true
         cache-dependency-glob: "uv.lock"
-    - name: Set up Python ${{ matrix.python-version }}
-      run: uv python install ${{ matrix.python-version }}
+        cache-suffix: py${{ matrix.python-version }}
     - name: Install dependencies
       run: uv sync --group test
     - name: Run tests
@@ -40,7 +40,7 @@ jobs:
       uses: mikepenz/action-junit-report@v6
       if: success() || failure()
       with:
-        check_name: Test Results (Python version ${{ matrix.python-version }})
+        check_name: Test Results (Python ${{ matrix.python-version }}, ${{ matrix.os }})
         report_paths: tests.xml
 
   typecheck:
@@ -49,14 +49,14 @@ jobs:
         python-version: [ "3.12" ]
     runs-on: "ubuntu-latest"
     steps:
-      - uses: actions/checkout@v4
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
+      - uses: actions/checkout@v7
+      - name: Install uv and Python ${{ matrix.python-version }}
+        uses: astral-sh/setup-uv@v10.1.0
         with:
+          python-version: ${{ matrix.python-version }}
           enable-cache: true
           cache-dependency-glob: "uv.lock"
-      - name: Set up Python ${{ matrix.python-version }}
-        run: uv python install ${{ matrix.python-version }}
+          cache-suffix: typecheck
       - name: Install dependencies
         run: uv sync --group test
       - name: Type checker
