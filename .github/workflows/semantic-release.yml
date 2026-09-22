@@ -38,11 +38,17 @@ jobs:
           node-version: 22
 
       # Pinned to an exact version: this action publishes no floating major
-      # tags, so @v6 would not resolve. All three plugins in .releaserc.json
-      # ship with the semantic-release core it bundles.
+      # tags, so @v6 would not resolve. The plugins in .releaserc.json ship
+      # with the semantic-release core it bundles, the conventionalcommits
+      # preset (which understands `feat!:`) has to be installed. Version 9:
+      # version 10 needs a newer changelog writer than the bundled
+      # release-notes-generator uses.
       - name: Semantic release
         id: semantic
         uses: cycjimmy/semantic-release-action@v6.0.0
+        with:
+          extra_plugins: |
+            conventional-changelog-conventionalcommits@9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
