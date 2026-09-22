@@ -179,9 +179,9 @@ Releases are automated with [semantic-release](https://semantic-release.gitbook.
 
 | PR title | Release |
 |----------|---------|
-| `fix: ...` | patch (1.2.3 → 1.2.4) |
+| `fix: ...`, `perf: ...` | patch (1.2.3 → 1.2.4) |
 | `feat: ...` | minor (1.2.3 → 1.3.0) |
-| `feat!: ...` or a `BREAKING CHANGE:` footer | major (1.2.3 → 2.0.0) |
-| `docs:`, `chore:`, `ci:`, `build:`, `refactor:`, `test:`, `style:`, `perf:` | no release |
+| `!` after the type (e.g. `feat!: ...`, `refactor!: ...`) or a `BREAKING CHANGE:` footer | major (1.2.3 → 2.0.0) |
+| `docs:`, `chore:`, `ci:`, `build:`, `refactor:`, `test:`, `style:`, `revert:` | no release |
 
 On every merge to `main` the next version is determined, tagged (`vX.Y.Z`), a GitHub release is created and the package is published to PyPI. The version is set during the build and is not committed, so the version in `pyproject.toml` is not the released version.
