@@ -86,3 +86,13 @@ def test_multiple_prepare_files_message(monkeypatch: pytest.MonkeyPatch, tmp_pat
     with pytest.raises(AssertionError) as exc:
         prepare(None)
     assert "both a prepare.yml and a prepare.yaml" in str(exc.value)
+
+
+def test_prepare_file_in_directory_with_special_characters(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """With prepare-toolbox < 0.4.4 the directory name was interpreted as part of the glob"""
+    from prepare_assignment.core.main import get_prepare_file
+    project = tmp_path / "[week 1] assignment"
+    project.mkdir()
+    (project / "prepare.yml").write_text("name: a\njobs: {}\n")
+    monkeypatch.chdir(project)
+    assert get_prepare_file(None) == "prepare.yml"

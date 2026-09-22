@@ -10,7 +10,7 @@ dependencies = [
     "ruamel-yaml>=0.18.5",
     "jsonschema>=4.21.1",
     "gitpython>=3.1.59",
-    "prepare-toolbox==0.4.0",
+    "prepare-toolbox>=1.0.1",
     "virtualenv>=20.25.0",
     "typer==0.27.2",
     "treelib>=1.7.0",
