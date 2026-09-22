@@ -582,7 +582,7 @@ requires-dist = [
     { name = "jsonschema", specifier = ">=4.21.1" },
     { name = "multipledispatch", specifier = ">=1.0.0" },
     { name = "packaging", specifier = ">=24.0" },
-    { name = "prepare-toolbox", specifier = "==0.4.0" },
+    { name = "prepare-toolbox", specifier = ">=1.0.1" },
     { name = "ruamel-yaml", specifier = ">=0.18.5" },
     { name = "simpleeval", specifier = ">=1.0.0" },
     { name = "treelib", specifier = ">=1.7.0" },
@@ -601,14 +601,14 @@ test = [
 
 [[package]]
 name = "prepare-toolbox"
-version = "0.4.0"
+version = "1.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "braceexpand" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1d/c3/b6d5ad3819fa8f9149a3cbd3653dbcb9208103f91fec3a379d528602e7eb/prepare_toolbox-0.4.0.tar.gz", hash = "sha256:825f50b9bccefcaf091d0e29b7881c311ce7c9a2f510ec481951beffd29871b9", size = 4952, upload-time = "2023-11-01T19:10:30.85Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/80/67/85a18c89af943534c23ce825de8e6e17550481f8c90e02db1c3a2d8a865e/prepare_toolbox-1.0.1.tar.gz", hash = "sha256:c11f499018b181ae4bc548669de698ee50dfbd309d9080e9538920c046798959", size = 55292, upload-time = "2026-09-22T06:15:35.074Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/81/3d/9569c6585515e637f32e3ca691ce5df85a01903ca7aa0ce9e4f75580640e/prepare_toolbox-0.4.0-py3-none-any.whl", hash = "sha256:15f694af2883463ec83cb568885f85bca4a4225816d86846b296da69c027c5e8", size = 6836, upload-time = "2023-11-01T19:10:29.84Z" },
+    { url = "https://files.pythonhosted.org/packages/b4/35/dd4cacca4d58361b66394160f9ca0f4062c2b5e55c0a8aa1dc557d347a63/prepare_toolbox-1.0.1-py3-none-any.whl", hash = "sha256:41e10ac9fa61e0cfe53d5c04b69baf2b0ee8a607dda2c9825c6ce0293055fd57", size = 7443, upload-time = "2026-09-22T06:15:34.015Z" },
 ]
 
 [[package]]

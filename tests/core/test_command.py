@@ -178,3 +178,20 @@ def test_handle_set_output_wrong_item_type(caplog: pytest.LogCaptureFixture) -> 
                                current_task_definition=definition, current_task=task)
     handle_set_output(fresh_env, ["", json.dumps({"l": ["a", 1]})])
     assert 'l' not in fresh_env.outputs['id']
+
+
+def test_toolbox_set_output_with_separator_contract(capsys: pytest.CaptureFixture) -> None:
+    """Values containing the separator (escaped by prepare-toolbox >= 1.0.1) must arrive unchanged."""
+    from pathlib import Path
+    from prepare_toolbox.core import set_output
+    from prepare_assignment.core import runner
+    set_output("files", ["a:PA:b.txt", Path("src") / "A.java"])
+    line = capsys.readouterr().out
+    output_definition = TaskOutputDefinition(description="files", type="array", items="string")
+    definition = PythonTaskDefinition(outputs={"files": output_definition}, description="t", inputs=[], id="t",
+                                      name="t", path="path", main="main.py")  # type: ignore
+    fresh_env = JobEnvironment(environment={}, outputs={"id": {}}, inputs={},
+                               current_task_definition=definition, current_task=task)
+    runner.__process_output_line(line, fresh_env)  # type: ignore[attr-defined]
+    assert fresh_env.task_errors == []
+    assert fresh_env.outputs["id"]["files"] == ["a:PA:b.txt", str(Path("src") / "A.java")]
