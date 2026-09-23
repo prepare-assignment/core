@@ -77,18 +77,18 @@ def __build_json_schema(props: TaskProperties, task: TaskDefinition) -> Dict[str
         },
         "required": ["uses"],
     }
-    if len(task.inputs) > 0:
-        properties: Dict[str, Any] = {}
-        required: List[str] = []
-        for inp in task.inputs:
-            properties[inp.name] = inp.to_schema_definition()
-            if inp.required:
-                required.append(inp.name)
-        with_schema: Dict[str, Any] = {"type": "object", "additionalProperties": False, "properties": properties}
-        if len(required) > 0:
-            with_schema["required"] = required
-            schema["required"].append("with")
-        schema["properties"]["with"] = with_schema
+    # A task without inputs still accepts an empty 'with'
+    properties: Dict[str, Any] = {}
+    required: List[str] = []
+    for inp in task.inputs:
+        properties[inp.name] = inp.to_schema_definition()
+        if inp.required:
+            required.append(inp.name)
+    with_schema: Dict[str, Any] = {"type": "object", "additionalProperties": False, "properties": properties}
+    if len(required) > 0:
+        with_schema["required"] = required
+        schema["required"].append("with")
+    schema["properties"]["with"] = with_schema
     return schema
 
 
@@ -273,8 +273,6 @@ def __prepare_tasks(tasks: List[Any], parsed: Optional[Dict[str, ValidableTask]]
         else:
             logger.debug(f"Task '{props}' has already been loaded in this run")
         if check_inputs and file is not None:
-            if task_def.get("with", None) is None:
-                task_def["with"] = {}
             validate_tasks(file, task_def, parsed[str(props)]["schema"])
     logger.debug("All (sub-)tasks prepared")
     return parsed
