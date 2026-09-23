@@ -8,7 +8,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from prepare_assignment.core.preparer import prepare_tasks, __task_install_dependencies
-from prepare_assignment.data.errors import DependencyError, PrepareTaskError
+from prepare_assignment.data.errors import DependencyError, PrepareTaskError, ValidationError
 from virtualenv import cli_run  # type: ignore
 
 from prepare_assignment.utils.files import remove_tree
@@ -317,3 +317,36 @@ def test_cached_composite_duplicate_id_is_rejected(mocker: MockerFixture) -> Non
     with pytest.raises(PrepareTaskError) as exc:
         prepare_tasks("prepare.yml", prepare)
     assert "multiple steps with id 'same'" in str(exc.value.cause)
+
+
+NO_INPUTS_TASK: Final[Dict[str, Any]] = {
+    'id': 'noinputs',
+    'name': 'No inputs',
+    'description': 'Task without inputs',
+    'runs': {'using': 'composite', 'tasks': [{'name': 'say', 'run': 'echo hello'}]}
+}
+
+
+@pytest.mark.parametrize("step", [
+    {'name': 'no with', 'uses': 'noinputs'},
+    {'name': 'empty with', 'uses': 'noinputs', 'with': {}},
+    {'name': 'null with', 'uses': 'noinputs', 'with': None},
+])
+def test_task_without_inputs(mocker: MockerFixture, step: Dict[str, Any]) -> None:
+    __clean_cache()
+    mocker.patch("prepare_assignment.core.preparer.__download_task",
+                 side_effect=lambda props: props.repo_path.mkdir(parents=True, exist_ok=True))
+    mocker.patch("prepare_assignment.core.preparer.validate_task_definition", return_value=NO_INPUTS_TASK)
+    mapping = prepare_tasks("prepare.yml", {'prepare': [step]})
+    assert list(mapping) == ["prepare-assignment/noinputs@latest"]
+
+
+def test_task_without_inputs_rejects_unknown_input(mocker: MockerFixture) -> None:
+    __clean_cache()
+    mocker.patch("prepare_assignment.core.preparer.__download_task",
+                 side_effect=lambda props: props.repo_path.mkdir(parents=True, exist_ok=True))
+    mocker.patch("prepare_assignment.core.preparer.validate_task_definition", return_value=NO_INPUTS_TASK)
+    step = {'name': 'typo', 'uses': 'noinputs', 'with': {'inptu': 'x'}}
+    with pytest.raises(ValidationError) as exc:
+        prepare_tasks("prepare.yml", {'prepare': [step]})
+    assert "'inptu' was unexpected" in exc.value.message
