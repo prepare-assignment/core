@@ -5,7 +5,8 @@ import pytest
 from pytest_mock import MockerFixture
 
 from prepare_assignment.core.validator import (validate_prepare, validate_tasks, load_yaml,
-                                               validate_task_definition, validate_default_values)
+                                               validate_task_definition, validate_default_values,
+                                               validate_unique_ids)
 from prepare_assignment.data.task_definition import PythonTaskDefinition
 from prepare_assignment.data.errors import ValidationError
 
@@ -179,3 +180,33 @@ def test_validate_default_values_bool_for_integer_invalid() -> None:
     task_copy["inputs"]["num"] = {'description': 'n', 'type': 'integer', 'default': True, 'required': False}
     with pytest.raises(ValidationError):
         validate_default_values(PythonTaskDefinition.of(task_copy, "test.yml"))
+
+
+def test_validate_unique_ids_valid() -> None:
+    steps = [{'name': 'a', 'id': 'a', 'run': 'echo'}, {'name': 'b', 'id': 'b', 'run': 'echo'},
+             {'name': 'no id', 'run': 'echo'}, {'name': 'no id', 'run': 'echo'}]
+    validate_unique_ids("prepare.yml", "job 'build'", steps)
+
+
+def test_validate_unique_ids_duplicate() -> None:
+    steps = [{'name': 'Remove old artefacts', 'id': 'remove', 'uses': 'remove'},
+             {'name': 'other', 'id': 'other', 'uses': 'remove'},
+             {'name': 'Remove old temp directory', 'id': 'remove', 'uses': 'remove'}]
+    with pytest.raises(ValidationError) as exc:
+        validate_unique_ids("prepare.yml", "job 'build'", steps)
+    assert exc.value.message == ("Error in: prepare.yml, job 'build' has multiple steps with id 'remove': "
+                                 "'Remove old artefacts', 'Remove old temp directory'")
+
+
+def test_validate_prepare_duplicate_id() -> None:
+    prepare = {'name': 'Duplicate', 'jobs': {'build': [{'name': 'a', 'id': 'same', 'run': 'echo'},
+                                                       {'name': 'b', 'id': 'same', 'run': 'echo'}]}}
+    with pytest.raises(ValidationError) as exc:
+        validate_prepare("prepare.yml", prepare)
+    assert "job 'build'" in exc.value.message
+
+
+def test_validate_prepare_same_id_in_different_jobs() -> None:
+    prepare = {'name': 'Different jobs', 'jobs': {'build': [{'name': 'a', 'id': 'same', 'run': 'echo'}],
+                                                  'test': [{'name': 'b', 'id': 'same', 'run': 'echo'}]}}
+    validate_prepare("prepare.yml", prepare)

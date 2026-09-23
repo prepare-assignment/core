@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
@@ -37,7 +37,30 @@ def validate_prepare(prepare_file: str, prepare: Dict[str, Any]) -> None:
     except ValidationError as ve:
         message = f"Error in: {prepare_file}, unable to verify '{ve.json_path}'\n\t -> {ve.message}"
         raise VE(message)
+    for job, steps in prepare["jobs"].items():
+        validate_unique_ids(prepare_file, f"job '{job}'", steps)
     logger.debug("✓ Prepare file is valid")
+
+
+def validate_unique_ids(file: str, where: str, steps: List[Dict[str, Any]]) -> None:
+    """
+    Validate that the ids of the steps are unique, the outputs of a step are stored under its id
+    NOTE: steps without an id are not checked
+    :param file: path/name of the file that contains the steps
+    :param where: the job or composite task that contains the steps, used in the error message
+    :param steps: the steps of the job or composite task
+    :return: None
+    :raises: ValidationError: if multiple steps have the same id
+    """
+    names: Dict[str, List[str]] = {}
+    for step in steps:
+        step_id = step.get("id", None)
+        if step_id is not None:
+            names.setdefault(step_id, []).append(step.get("name", ""))
+    for step_id, step_names in names.items():
+        if len(step_names) > 1:
+            quoted = ", ".join(f"'{name}'" for name in step_names)
+            raise VE(f"Error in: {file}, {where} has multiple steps with id '{step_id}': {quoted}")
 
 
 def validate_tasks(file: str, task: Dict[str, Any], json_schema: Any) -> None:
