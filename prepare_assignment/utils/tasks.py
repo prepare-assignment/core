@@ -2,7 +2,7 @@ import os
 from typing import List
 
 from prepare_assignment.data.task_definition import TaskDefinition
-from prepare_assignment.data.task_properties import TaskProperties
+from prepare_assignment.data.task_properties import TaskProperties, directory_to_version
 from prepare_assignment.utils.paths import get_tasks_path
 from prepare_assignment.utils.yml_loader import YAML_LOADER
 
@@ -20,7 +20,7 @@ def get_all_tasks() -> List[TaskProperties]:
             version_path = os.path.join(org_path, task)
             versions = os.listdir(version_path)
             for version in versions:
-                tasks.append(TaskProperties.of(f"{org}/{task}@{version}"))
+                tasks.append(TaskProperties(org, task, directory_to_version(version)))
     return tasks
 
 
