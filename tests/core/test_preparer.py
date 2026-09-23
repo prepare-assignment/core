@@ -283,3 +283,37 @@ def test_outdated_schema_is_updated_on_load(mocker: MockerFixture) -> None:
     spy.assert_not_called()
     with open(schema_file) as handle:
         assert "if" in json.load(handle)["properties"]
+
+
+DUPLICATE_ID_COMPOSITE: Final[Dict[str, Any]] = {
+    'id': 'duplicate',
+    'name': 'duplicate',
+    'description': 'Composite task with a duplicate step id',
+    'runs': {
+        'using': 'composite',
+        'tasks': [{'name': 'first', 'id': 'same', 'run': 'echo 1'},
+                  {'name': 'second', 'id': 'same', 'run': 'echo 2'}]
+    }
+}
+
+
+def test_composite_duplicate_id_is_rejected(mocker: MockerFixture) -> None:
+    __clean_cache()
+    mocker.patch("prepare_assignment.core.preparer.__download_task")
+    mocker.patch("prepare_assignment.core.preparer.validate_task_definition", return_value=DUPLICATE_ID_COMPOSITE)
+    remove = mocker.patch("prepare_assignment.core.preparer.remove_tree")
+    prepare = {'prepare': [{'name': 'duplicate', 'uses': 'duplicate', 'with': {}}]}
+    with pytest.raises(PrepareTaskError) as exc:
+        prepare_tasks("prepare.yml", prepare)
+    assert "multiple steps with id 'same'" in str(exc.value.cause)
+    remove.assert_called()
+
+
+def test_cached_composite_duplicate_id_is_rejected(mocker: MockerFixture) -> None:
+    __clean_cache()
+    mocker.patch("prepare_assignment.core.preparer.__is_installed", return_value=True)
+    mocker.patch("prepare_assignment.core.preparer.load_yaml", return_value=DUPLICATE_ID_COMPOSITE)
+    prepare = {'prepare': [{'name': 'duplicate', 'uses': 'duplicate', 'with': {}}]}
+    with pytest.raises(PrepareTaskError) as exc:
+        prepare_tasks("prepare.yml", prepare)
+    assert "multiple steps with id 'same'" in str(exc.value.cause)
