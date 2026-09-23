@@ -18,7 +18,14 @@ class TaskProperties:
 
     @cached_property
     def task_path(self) -> Path:
-        return Path(os.path.join(tasks_path, self.organization, self.name, self.version))
+        return Path(os.path.join(tasks_path, self.organization, self.name, self.version_directory))
+
+    @property
+    def version_directory(self) -> str:
+        """
+        The version as a single directory name, a branch can contain a slash (e.g. fix/something)
+        """
+        return version_to_directory(self.version)
 
     @cached_property
     def repo_path(self) -> Path:
@@ -38,19 +45,21 @@ class TaskProperties:
 
     @classmethod
     def of(cls, task: str) -> TaskProperties:
-        parts = task.split("/")
+        # Everything after the first '@' is the version, a branch can contain a slash
+        name, separator, version = task.partition("@")
+        if not separator:
+            version = "latest"
+        parts = name.split("/")
         if len(parts) > 2:
             raise ValueError("Tasks cannot have more than one slash")
         elif len(parts) == 1:
             parts.insert(0, "prepare-assignment")
-        organization: str = parts[0]
-        name = parts[1]
-        split = name.split("@")
-        version: str = "latest"
-        task_name: str = name
-        if len(split) > 2:
-            raise ValueError("Cannot have multiple '@' symbols in the name")
-        elif len(split) == 2:
-            task_name = split[0]
-            version = split[1]
-        return cls(organization, task_name, version)
+        return cls(parts[0], parts[1], version)
+
+
+def version_to_directory(version: str) -> str:
+    return version.replace("%", "%25").replace("/", "%2F")
+
+
+def directory_to_version(directory: str) -> str:
+    return directory.replace("%2F", "/").replace("%25", "%")

@@ -93,3 +93,14 @@ def test_load_task_uses_task_path(tasks_dir: Path) -> None:
     props = TaskProperties.of("remove")
     _install_fake(props, "x")
     assert load_task(props).path == props.task_path
+
+
+def test_version_with_slash(tasks_dir: Path, mocker: MockerFixture, capsys: pytest.CaptureFixture) -> None:
+    from prepare_assignment.utils.tasks import get_all_tasks
+    mocker.patch("prepare_assignment.utils.tasks.get_tasks_path", return_value=tasks_dir)
+    mocker.patch("prepare_assignment.core.task_handler.tasks_path", tasks_dir)
+    props = TaskProperties.of("remove@fix/something")
+    _install_fake(props, "branch")
+    assert get_all_tasks() == [props]
+    task_handler.ls()
+    assert "fix/something" in capsys.readouterr().out

@@ -9,7 +9,7 @@ from treelib import Tree
 from prepare_assignment.core.preparer import __prepare_tasks
 from prepare_assignment.core.versions import get_git_url, is_fixed_version
 from prepare_assignment.data.task_definition import TaskDefinition
-from prepare_assignment.data.task_properties import TaskProperties
+from prepare_assignment.data.task_properties import TaskProperties, directory_to_version
 from prepare_assignment.utils.files import remove_tree
 from prepare_assignment.utils.dependency import get_dependencies
 from prepare_assignment.utils.paths import get_tasks_path
@@ -88,7 +88,7 @@ def ls() -> None:
             version_path = os.path.join(org_path, task)
             versions = sorted(os.listdir(version_path))
             for version in versions:
-                tree.create_node(version, parent=task)
+                tree.create_node(directory_to_version(version), parent=task)
     t = tree.show(stdout=False)
     print(t)
 
