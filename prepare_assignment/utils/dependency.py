@@ -29,6 +29,6 @@ def get_dependencies(task: TaskProperties) -> Set[TaskProperties]:
 
 @dispatch(set)  # type: ignore
 def get_dependencies(tasks: Set[TaskProperties]) -> Set[TaskProperties]:
-    visited = set()
+    visited: Set[TaskProperties] = set()
     __get_dependencies(set(tasks), visited)
     return visited
