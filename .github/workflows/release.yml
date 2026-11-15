@@ -1,33 +1,161 @@
 name: Release
 
-# Fires only on tags pushed by a human: a manual tag cut as an escape hatch.
-# Routine releases come from semantic-release.yml, whose GITHUB_TOKEN-pushed
-# tags deliberately do not trigger this workflow — that is what keeps a
-# release from being published twice.
+# Two ways in, one way out to PyPI:
+#   - push to main: semantic-release decides whether there is a new version,
+#     tags it and creates the GitHub release.
+#   - a v* tag pushed by a human: a manual release as an escape hatch.
+# The tags semantic-release pushes with GITHUB_TOKEN do not trigger workflows,
+# so a version is never published twice.
+#
+# Publishing uses PyPI Trusted Publishing (no token) and uploads PEP 740
+# attestations. Both require the publish job to live in this top-level
+# workflow: PyPI does not accept a reusable workflow as a trusted publisher.
+# The trusted publisher on PyPI is registered for this file (release.yml)
+# and the `pypi` environment, so renaming either breaks publishing.
 on:
   push:
+    branches: [main]
     tags: ["v*"]
 
+# Never cancel a release mid-flight: a half-run that has tagged but not yet
+# published would need cleaning up by hand.
 concurrency:
   group: release-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
+  release:
+    name: semantic release
+    if: github.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the tag and the GitHub release
+      issues: write # comment "released in vX.Y.Z" on issues
+      pull-requests: write # and on the PRs that fed the release
+    outputs:
+      published: ${{ steps.semantic.outputs.new_release_published }}
+      version: ${{ steps.semantic.outputs.new_release_version }}
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # semantic-release walks back to the previous tag to decide the bump,
+          # so a shallow clone makes it compute the wrong version.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      # Pinned to an exact version: this action publishes no floating major
+      # tags, so @v6 would not resolve. The plugins in .releaserc.json ship
+      # with the semantic-release core it bundles, the conventionalcommits
+      # preset (which understands `feat!:`) has to be installed. Version 9:
+      # version 10 needs a newer changelog writer than the bundled
+      # release-notes-generator uses.
+      - name: Semantic release
+        id: semantic
+        uses: cycjimmy/semantic-release-action@v8.1.4
+        with:
+          extra_plugins: |
+            conventional-changelog-conventionalcommits@9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # The version to publish: the one semantic-release just cut, or the pushed
+  # tag without its leading v. Skipped when there is nothing to publish.
   version:
-    name: version from tag
+    name: version to publish
+    needs: release
+    # always(): on a tag push the release job is skipped, which would
+    # otherwise skip this job too.
+    if: >-
+      always() &&
+      (github.ref_type == 'tag' ||
+       (needs.release.result == 'success' && needs.release.outputs.published == 'true'))
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - id: version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        env:
+          RELEASED: ${{ needs.release.outputs.version }}
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="$RELEASED"
+          fi
+          echo "Publishing version $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  # Built in a separate job, so the build itself never holds the OIDC token
+  # that can publish to PyPI.
+  build:
+    name: build
+    needs: version
+    # A skipped ancestor (release, on a tag push) would skip this job too.
+    if: always() && needs.version.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # No cache: a release is built from a clean environment.
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          python-version: "3.12"
+          enable-cache: false
+
+      # The version is not committed back to main, so the version in
+      # pyproject.toml is stale. Set the released version just for this build.
+      - name: Set version
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: uv version "$VERSION" --frozen
+
+      - name: Build
+        run: uv build
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
 
   publish:
-    needs: version
-    uses: ./.github/workflows/pypi-publish.yml
-    with:
-      version: ${{ needs.version.outputs.version }}
-    secrets: inherit
+    name: publish to PyPI
+    needs: build
+    if: always() && needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/prepare-assignment
+    permissions:
+      id-token: write # Trusted Publishing and signing the attestations
+
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          enable-cache: false
+
+      # Writes a <file>.publish.attestation next to every file in dist/,
+      # which uv publish uploads with it. Pinned to a commit: the action is
+      # pre-1.0 and may change in breaking ways between releases.
+      - name: Create attestations
+        uses: astral-sh/attest-action@39b6ce43875c196a579e31635b11aa2a2036384a # v0.0.7
+
+      - name: Publish
+        run: uv publish --trusted-publishing always
