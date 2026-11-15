@@ -185,3 +185,11 @@ Releases are automated with [semantic-release](https://semantic-release.gitbook.
 | `docs:`, `chore:`, `ci:`, `build:`, `refactor:`, `test:`, `style:`, `revert:` | no release |
 
 On every merge to `main` the next version is determined, tagged (`vX.Y.Z`), a GitHub release is created and the package is published to PyPI. The version is set during the build and is not committed, so the version in `pyproject.toml` is not the released version.
+
+The package is published from `.github/workflows/release.yml` with [Trusted Publishing](https://docs.pypi.org/trusted-publishers/), so no PyPI token is stored, and with [PEP 740 attestations](https://docs.pypi.org/attestations/) that tie every file on PyPI to the workflow run that built it ("Verified details" on the PyPI page). To check a file yourself:
+
+```shell
+uvx pypi-attestations verify pypi --repository https://github.com/prepare-assignment/core pypi:prepare_assignment-1.2.3-py3-none-any.whl
+```
+
+To release manually, push a tag: `git tag v1.2.3 && git push origin v1.2.3`. The same workflow publishes it (without a GitHub release). Publishing from a local machine is not possible: PyPI only accepts uploads from that workflow.
